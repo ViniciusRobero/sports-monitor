@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="SportsMonitor.Application/SportsMonitor.Application.csproj" />
+  <Project Path="SportsMonitor.Domain/SportsMonitor.Domain.csproj" />
+  <Project Path="SportsMonitor.Infrastructure/SportsMonitor.Infrastructure.csproj" />
+  <Project Path="SportsMonitor.Tests/SportsMonitor.Tests.csproj" />
+</Solution>
