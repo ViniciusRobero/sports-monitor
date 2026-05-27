@@ -24,6 +24,7 @@
     <ProjectReference Include="..\SportsMonitor.Domain\SportsMonitor.Domain.csproj" />
     <ProjectReference Include="..\SportsMonitor.Application\SportsMonitor.Application.csproj" />
     <ProjectReference Include="..\SportsMonitor.Infrastructure\SportsMonitor.Infrastructure.csproj" />
+    <ProjectReference Include="..\SportsMonitor.Workers\SportsMonitor.Workers.csproj" />
   </ItemGroup>
 
 </Project>
