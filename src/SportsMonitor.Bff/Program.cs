@@ -28,6 +28,8 @@ builder.Services.Configure<BetsApiOptions>(
     builder.Configuration.GetSection("Providers:BetsApi"));
 builder.Services.Configure<SofaScoreOptions>(
     builder.Configuration.GetSection("Providers:SofaScore"));
+builder.Services.Configure<Scores365Options>(
+    builder.Configuration.GetSection("Providers:Scores365"));
 
 builder.Services.AddSingleton(Channel.CreateUnbounded<Divergence>(
     new UnboundedChannelOptions { SingleReader = true }));
@@ -50,6 +52,7 @@ builder.Services.AddHostedService<AlertWorker>();
 builder.Services.AddHostedService<ApiFootballWorker>();
 builder.Services.AddHostedService<BetsApiWorker>();
 builder.Services.AddHostedService<SofaScoreWorker>();
+builder.Services.AddHostedService<Scores365Worker>();
 
 builder.Services.AddHttpClient<ApiFootballProvider>((sp, client) =>
 {
@@ -77,6 +80,16 @@ builder.Services.AddHttpClient<SofaScoreProvider>((sp, client) =>
 });
 builder.Services.AddSingleton(sp =>
     sp.GetRequiredService<IOptionsMonitor<SofaScoreOptions>>().CurrentValue);
+
+builder.Services.AddHttpClient<Scores365Provider>((sp, client) =>
+{
+    var options = sp.GetRequiredService<IOptionsMonitor<Scores365Options>>().CurrentValue;
+    client.BaseAddress = new Uri(options.BaseUrl);
+    client.DefaultRequestHeaders.Add("User-Agent", options.UserAgent);
+    client.DefaultRequestHeaders.Add("Accept", "application/json, text/plain, */*");
+});
+builder.Services.AddSingleton(sp =>
+    sp.GetRequiredService<IOptionsMonitor<Scores365Options>>().CurrentValue);
 
 var app = builder.Build();
 
