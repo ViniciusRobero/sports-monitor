@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using System.Threading.Channels;
 using Microsoft.Extensions.Options;
 using SportsMonitor.Application;
@@ -15,7 +16,9 @@ using SportsMonitor.Workers;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(opts =>
+        opts.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddSignalR();
 
 builder.Services.Configure<ApiFootballOptions>(
