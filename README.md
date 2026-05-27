@@ -112,22 +112,60 @@ Máquina do Usuário
 
 ---
 
-### Como rodar localmente
+### Como rodar localmente (modo debug / desenvolvimento)
 
-**Requisitos:** .NET 10 SDK, Node 18+, Angular CLI 21+
+**Requisitos:** .NET 10 SDK · Node 18+ · Angular CLI 21+
 
+#### Passo a passo
+
+**1. Clone e instale dependências do Angular**
 ```bash
-# 1 — iniciar o BFF (API + workers + SignalR)
-dotnet run --project src/SportsMonitor.Bff/SportsMonitor.Bff.csproj
-
-# 2 — iniciar o dashboard Angular (modo dev, proxy para localhost:5000)
-cd src/SportsMonitor.Web && ng serve
-
-# OU iniciar o shell WPF (inicia o BFF automaticamente)
-dotnet run --project src/SportsMonitor.Desktop/SportsMonitor.Desktop.csproj
+git clone https://github.com/ViniciusRobero/sports-monitor.git
+cd sports-monitor/src/SportsMonitor.Web
+npm install
 ```
 
-Dashboard disponível em `http://localhost:4200` (dev) ou `http://localhost:5000` (BFF servindo arquivos estáticos).
+**2. Habilite pelo menos um provedor em `src/SportsMonitor.Bff/appsettings.json`**
+
+SofaScore e 365Scores não precisam de chave — é o mais rápido para testar:
+```json
+"SofaScore": { "Enabled": true, "PollingIntervalSeconds": 30 },
+"Scores365": { "Enabled": true, "PollingIntervalSeconds": 20 }
+```
+
+**3. Inicie o BFF** (Terminal 1)
+```bash
+dotnet run --project src/SportsMonitor.Bff/SportsMonitor.Bff.csproj
+```
+Aguarde a mensagem `Now listening on: http://localhost:5000`.
+
+**4. Inicie o dashboard Angular** (Terminal 2)
+```bash
+cd src/SportsMonitor.Web && ng serve
+```
+Aguarde `Application bundle generation complete`.
+
+**5. Abra o dashboard**
+
+`http://localhost:4200`
+
+O dashboard conecta ao BFF via SignalR. Quando houver partidas ao vivo e uma divergência for detectada, um card aparece e um beep toca.
+
+**Para testar os endpoints REST diretamente:**
+```bash
+curl http://localhost:5000/api/matches/live
+curl http://localhost:5000/api/divergences
+```
+
+---
+
+### Como gerar o pacote para uso sem ambiente de desenvolvimento
+
+```powershell
+.\publish.ps1
+```
+
+Gera a pasta `publish\` com dois arquivos. Basta executar `publish\SportsMonitor.Desktop.exe` — ele inicia o BFF automaticamente e abre o dashboard.
 
 ---
 
@@ -285,13 +323,42 @@ User Machine
 | `CardMismatchRule` | High | Yellow or red card attributed to different player |
 | `MatchStatusMismatchRule` | Medium | One source says live, another says finished/postponed |
 
-### Running locally
+### Running locally (debug / dev mode)
 
+**Requirements:** .NET 10 SDK · Node 18+ · Angular CLI 21+
+
+**1. Install Angular dependencies**
+```bash
+cd src/SportsMonitor.Web && npm install
+```
+
+**2. Enable at least one provider** in `src/SportsMonitor.Bff/appsettings.json`
+
+SofaScore and 365Scores require no API key — fastest way to test:
+```json
+"SofaScore": { "Enabled": true, "PollingIntervalSeconds": 30 },
+"Scores365": { "Enabled": true, "PollingIntervalSeconds": 20 }
+```
+
+**3. Start the BFF** (Terminal 1)
 ```bash
 dotnet run --project src/SportsMonitor.Bff/SportsMonitor.Bff.csproj
-cd src/SportsMonitor.Web && ng serve
-# OR: dotnet run --project src/SportsMonitor.Desktop/SportsMonitor.Desktop.csproj
 ```
+
+**4. Start the Angular dashboard** (Terminal 2)
+```bash
+cd src/SportsMonitor.Web && ng serve
+```
+
+**5. Open** `http://localhost:4200`
+
+### Building a distributable package
+
+```powershell
+.\publish.ps1
+```
+
+Outputs a `publish\` folder. Run `publish\SportsMonitor.Desktop.exe` — it auto-starts the BFF and opens the dashboard.
 
 ### Important constraints
 
