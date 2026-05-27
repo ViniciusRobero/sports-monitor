@@ -23,6 +23,8 @@ builder.Services.AddSignalR();
 
 builder.Services.Configure<ApiFootballOptions>(
     builder.Configuration.GetSection("Providers:ApiFootball"));
+builder.Services.Configure<BetsApiOptions>(
+    builder.Configuration.GetSection("Providers:BetsApi"));
 
 builder.Services.AddSingleton(Channel.CreateUnbounded<Divergence>(
     new UnboundedChannelOptions { SingleReader = true }));
@@ -42,6 +44,7 @@ builder.Services.AddSingleton<DivergenceEngine>();
 builder.Services.AddSingleton<IAlertChannel, SignalRAlertChannel>();
 builder.Services.AddHostedService<AlertWorker>();
 builder.Services.AddHostedService<ApiFootballWorker>();
+builder.Services.AddHostedService<BetsApiWorker>();
 
 builder.Services.AddHttpClient<ApiFootballProvider>((sp, client) =>
 {
@@ -52,6 +55,14 @@ builder.Services.AddHttpClient<ApiFootballProvider>((sp, client) =>
 });
 builder.Services.AddSingleton(sp =>
     sp.GetRequiredService<IOptionsMonitor<ApiFootballOptions>>().CurrentValue);
+
+builder.Services.AddHttpClient<BetsApiProvider>((sp, client) =>
+{
+    var options = sp.GetRequiredService<IOptionsMonitor<BetsApiOptions>>().CurrentValue;
+    client.BaseAddress = new Uri(options.BaseUrl);
+});
+builder.Services.AddSingleton(sp =>
+    sp.GetRequiredService<IOptionsMonitor<BetsApiOptions>>().CurrentValue);
 
 var app = builder.Build();
 
