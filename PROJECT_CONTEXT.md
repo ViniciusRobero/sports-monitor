@@ -21,9 +21,19 @@ AI handoff is mandatory. `PROJECT_CONTEXT.md` and `/ai-notes/` files must be kep
 **Phase 01 — Data Source Research: COMPLETE**
 **Phase 03 — Technical Architecture: COMPLETE** (Phase 02 requirements já capturados em PHASE_02_PLUS_PLANNING_UPDATE.md)
 
-**Next: Phase 04 — MVP Implementation Plan**
+**Current: Phase 04 — MVP Implementation**
 
-Phase 04 deliverable: `PHASE_04_MVP_IMPLEMENTATION_PLAN.md`
+Phase 04 plan exists in `PHASE_04_MVP_IMPLEMENTATION_PLAN.md`. Implementation has started in `src/`.
+
+Implemented so far:
+- Domain models, interfaces, and provider configuration models
+- Application rules: ScoreMismatch, GoalScorerMismatch, MissingGoal
+- Infrastructure: InMemorySnapshotStore, FuzzyMatchResolver, JsonlMatchHistoryRepository
+- Infrastructure provider: ApiFootballProvider with mocked mapping test
+- Application: DivergenceEngine with persistence + alert queue flow
+- Workers: PollingWorker, ApiFootballWorker, AlertWorker
+- BFF: ASP.NET Core project, REST endpoints, AlertHub, SignalRAlertChannel, DI wiring
+- Tests: 40 passing via `dotnet test SportsMonitor.slnx`
 
 ---
 

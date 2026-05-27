@@ -6,29 +6,31 @@ Toda a pesquisa de fontes foi concluída. A arquitetura pode ser iniciada.
 
 ---
 
-## Atual: Phase 04 — MVP Implementation Plan
+## Atual: Phase 04 — MVP Implementation
 
 Phase 01, Phase 02 (requisitos em PHASE_02_PLUS_PLANNING_UPDATE.md) e Phase 03 (arquitetura em PHASE_03_TECHNICAL_ARCHITECTURE.md) estão completos.
 
-### Deliverable principal
+### Status atual
 
-Criar o arquivo:
-```
-PHASE_04_MVP_IMPLEMENTATION_PLAN.md
-```
+`PHASE_04_MVP_IMPLEMENTATION_PLAN.md` foi criado e a implementação iniciou em `src/`.
 
-Conteúdo esperado (tarefas em ordem):
-1. Scaffold da solution (projetos, referências, DI base)
-2. Domain: entidades e interfaces
-3. Infrastructure: JSONL repository + InMemorySnapshotStore
-4. Provider: ApiFootballProvider (primeiro — API documentada)
-5. DivergenceEngine + ScoreMismatchRule
-6. AlertWorker + SignalRAlertChannel
-7. BFF: endpoints + SignalR hub
-8. Angular: dashboard mínimo + som de alerta
-9. Desktop shell: WPF + WebView2
-10. SofaScoreProvider + Api365ScoresProvider
-11. Demais regras de divergência
+Concluído:
+- Domain: entidades, interfaces e modelos de configuração
+- Application: regras ScoreMismatch, GoalScorerMismatch, MissingGoal
+- Application: DivergenceEngine reativo com fila de alerta
+- Infrastructure: InMemorySnapshotStore, FuzzyMatchResolver, JsonlMatchHistoryRepository
+- Infrastructure: ApiFootballProvider com teste por JSON mockado
+- Workers: PollingWorker, ApiFootballWorker, AlertWorker
+- BFF: projeto ASP.NET Core, endpoints REST, AlertHub, SignalRAlertChannel e DI inicial
+- Testes: `dotnet test SportsMonitor.slnx` => 40 passing
+
+Próximas tarefas em ordem:
+1. Validar `dotnet run --project SportsMonitor.Bff` e endpoints locais
+2. Adicionar testes/integration smoke para endpoints do BFF, se necessário
+3. Angular: dashboard mínimo + conexão SignalR + som de alerta
+4. Desktop shell: WPF + WebView2
+5. SofaScoreProvider + Api365ScoresProvider
+6. Demais regras de divergência
 
 ### Referências de arquitetura
 
