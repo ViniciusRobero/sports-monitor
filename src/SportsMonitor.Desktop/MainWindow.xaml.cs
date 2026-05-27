@@ -25,35 +25,41 @@ public partial class MainWindow : Window
 
     private void StartBff()
     {
-        var bffDll = FindBffDll();
-        if (bffDll is null) return;
-
-        _bffProcess = new Process
-        {
-            StartInfo = new ProcessStartInfo("dotnet", $"\"{bffDll}\"")
-            {
-                UseShellExecute = false,
-                CreateNoWindow = true,
-                WorkingDirectory = Path.GetDirectoryName(bffDll)!
-            }
-        };
-        _bffProcess.Start();
-    }
-
-    private static string? FindBffDll()
-    {
         var appDir = AppContext.BaseDirectory;
 
-        // when running from solution root (dev: dotnet run)
-        var devPath = Path.Combine(appDir, "..", "..", "..", "..",
-            "SportsMonitor.Bff", "bin", "Debug", "net10.0", "SportsMonitor.Bff.dll");
-        if (File.Exists(devPath)) return Path.GetFullPath(devPath);
+        // published mode: SportsMonitor.Bff.exe sits alongside the Desktop exe
+        var bffExe = Path.Combine(appDir, "SportsMonitor.Bff.exe");
+        if (File.Exists(bffExe))
+        {
+            _bffProcess = new Process
+            {
+                StartInfo = new ProcessStartInfo(bffExe)
+                {
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    WorkingDirectory = appDir
+                }
+            };
+            _bffProcess.Start();
+            return;
+        }
 
-        // when deployed alongside BFF dll
-        var sideBySide = Path.Combine(appDir, "SportsMonitor.Bff.dll");
-        if (File.Exists(sideBySide)) return sideBySide;
-
-        return null;
+        // dev mode: launch via dotnet SportsMonitor.Bff.dll
+        var bffDll = Path.GetFullPath(Path.Combine(appDir, "..", "..", "..", "..",
+            "SportsMonitor.Bff", "bin", "Debug", "net10.0", "SportsMonitor.Bff.dll"));
+        if (File.Exists(bffDll))
+        {
+            _bffProcess = new Process
+            {
+                StartInfo = new ProcessStartInfo("dotnet", $"\"{bffDll}\"")
+                {
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    WorkingDirectory = Path.GetDirectoryName(bffDll)!
+                }
+            };
+            _bffProcess.Start();
+        }
     }
 
     private void OnClosing(object? sender, System.ComponentModel.CancelEventArgs e)
