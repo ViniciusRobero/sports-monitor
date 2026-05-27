@@ -20,6 +20,21 @@ export interface Divergence {
   analystNotes: string | null;
 }
 
+export interface GoogleSearchResult {
+  title: string;
+  snippet: string;
+  url: string;
+}
+
+export interface GoogleSearchSnapshot {
+  matchId: string;
+  homeTeam: string;
+  awayTeam: string;
+  query: string;
+  results: GoogleSearchResult[];
+  fetchedAt: string;
+}
+
 export interface VerificationUpdate {
   status: VerificationStatus;
   replayLink: string | null;

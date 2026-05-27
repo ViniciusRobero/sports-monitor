@@ -1,12 +1,15 @@
 import { Injectable, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import * as signalR from '@microsoft/signalr';
-import { Divergence, VerificationUpdate } from './models';
+import { Divergence, GoogleSearchSnapshot, VerificationUpdate } from './models';
 
 @Injectable({ providedIn: 'root' })
 export class AlertService {
   readonly divergences = signal<Divergence[]>([]);
+  readonly googleSnapshots = signal<GoogleSearchSnapshot[]>([]);
   readonly connected = signal(false);
+
+  private googlePollTimer?: ReturnType<typeof setInterval>;
 
   private hub = new signalR.HubConnectionBuilder()
     .withUrl('/hubs/alerts')
@@ -29,6 +32,20 @@ export class AlertService {
 
     await this.hub.start();
     this.connected.set(true);
+
+    this.fetchGoogleResults();
+    this.googlePollTimer = setInterval(() => this.fetchGoogleResults(), 120_000);
+  }
+
+  private fetchGoogleResults(): void {
+    this.http.get<GoogleSearchSnapshot[]>('/api/google-results').subscribe({
+      next: snaps => this.googleSnapshots.set(snaps),
+      error: () => {}
+    });
+  }
+
+  googleForMatch(matchId: string): GoogleSearchSnapshot | null {
+    return this.googleSnapshots().find(s => s.matchId === matchId) ?? null;
   }
 
   async verify(id: string, update: VerificationUpdate): Promise<void> {

@@ -19,7 +19,7 @@ import { DivergenceCard } from './divergence-card';
         <div class="empty">No divergences detected. Monitoring live matches...</div>
       }
       @for (d of alerts.divergences(); track d.id) {
-        <app-divergence-card [d]="d" />
+        <app-divergence-card [d]="d" [googleSnapshot]="alerts.googleForMatch(d.matchId)" />
       }
     </main>
   `,
