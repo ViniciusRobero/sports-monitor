@@ -13,7 +13,6 @@ using SportsMonitor.Infrastructure.Providers;
 using SportsMonitor.Infrastructure.Repositories;
 using SportsMonitor.Infrastructure.Resolvers;
 using SportsMonitor.Infrastructure.Stores;
-using SportsMonitor.Workers;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -98,7 +97,11 @@ var store = app.Services.GetRequiredService<ISnapshotStore>();
 var engine = app.Services.GetRequiredService<DivergenceEngine>();
 store.SnapshotUpdated += match => _ = engine.EvaluateAsync(match);
 
+app.UseDefaultFiles();
+app.UseStaticFiles();
+
 app.MapControllers();
 app.MapHub<AlertHub>("/hubs/alerts");
+app.MapFallbackToFile("index.html");
 
 app.Run();
