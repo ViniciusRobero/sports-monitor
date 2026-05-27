@@ -5,4 +5,5 @@
   <Project Path="SportsMonitor.Infrastructure/SportsMonitor.Infrastructure.csproj" />
   <Project Path="SportsMonitor.Tests/SportsMonitor.Tests.csproj" />
   <Project Path="SportsMonitor.Workers/SportsMonitor.Workers.csproj" />
+  <Project Path="SportsMonitor.Desktop/SportsMonitor.Desktop.csproj" />
 </Solution>
