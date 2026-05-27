@@ -55,6 +55,7 @@ Máquina do Usuário
 │   ├── BetsApiWorker       (padrão 30s — Bet365 via BetsAPI)
 │   ├── SofaScoreWorker     (padrão 30s — API interna SofaScore)
 │   ├── Scores365Worker     (padrão 20s — API interna 365Scores)
+│   ├── GoogleSearchWorker  (padrão 120s — Custom Search API)
 │   └── AlertWorker         (consome fila de divergências → SignalR)
 │
 ├── In-Memory Snapshot Store   ← dispara SnapshotUpdated a cada atualização
@@ -90,13 +91,15 @@ Máquina do Usuário
 | **SofaScore** | ✅ incidentes completos | ✅ | API interna — `api.sofascore.com/api/v1` | Grátis |
 | **API-Football** | ✅ eventos completos | ✅ | API oficial — `v3.football.api-sports.io` | $19/mês (Pro) |
 | **365Scores** | ❌ apenas placar | ✅ | API interna — `webws.365scores.com/web/` | Grátis |
+| **Google** | ✅ snippets de busca ao vivo | — | Custom Search JSON API — `googleapis.com` | Grátis (100/dia) |
 
-### Fontes de verificação (manual)
+### Papel do Google no dashboard
 
-| Fonte | Papel |
-|---|---|
-| **Google** | O dashboard gera um link de busca com um clique para encontrar replay/highlights. Não automatizado — o analista verifica manualmente. |
-| **Bet365** | Plataforma onde o analista age manualmente após confirmar a divergência. |
+O Google não expõe dados estruturados de partida, mas seus resultados de busca funcionam como **painel de verificação integrado**: para cada partida ao vivo monitorada, o sistema busca automaticamente os top 3 resultados e os exibe dentro de cada card de divergência. O analista vê título, snippet e link — sem sair do dashboard.
+
+A ação manual (abrir replay, confirmar evento) continua sendo feita pelo analista. A **Bet365** é a plataforma onde ele age após confirmar.
+
+> **Limite do free tier:** 100 buscas/dia. Com intervalo de 120s e ~2-3 partidas simultâneas, o free tier é suficiente. Acima disso, o Google cobra $5 por 1.000 buscas adicionais.
 
 ---
 
@@ -193,10 +196,22 @@ Todos os provedores ficam desabilitados por padrão. Habilite e configure as cha
     "Scores365": {
       "Enabled": true,
       "PollingIntervalSeconds": 20
+    },
+    "Google": {
+      "Enabled": true,
+      "PollingIntervalSeconds": 120,
+      "ApiKey": "SUA_CHAVE_GOOGLE",
+      "SearchEngineId": "SEU_CX_ID",
+      "ResultsPerMatch": 3
     }
   }
 }
 ```
+
+Para obter as credenciais do Google:
+1. Criar projeto no [Google Cloud Console](https://console.cloud.google.com) e habilitar a **Custom Search JSON API**
+2. Criar um Search Engine em [programmablesearchengine.google.com](https://programmablesearchengine.google.com) (marcar "Buscar na web inteira")
+3. Copiar a `API Key` (Google Cloud) e o `Search Engine ID` (`cx`) para o `appsettings.json`
 
 ---
 
@@ -290,6 +305,7 @@ User Machine
 │   ├── BetsApiWorker       (default 30s — Bet365 via BetsAPI)
 │   ├── SofaScoreWorker     (default 30s — SofaScore internal API)
 │   ├── Scores365Worker     (default 20s — 365Scores internal API)
+│   ├── GoogleSearchWorker  (default 120s — Custom Search API)
 │   └── AlertWorker         (consumes divergence queue → SignalR)
 │
 ├── In-Memory Snapshot Store   ← fires SnapshotUpdated on every update
@@ -312,6 +328,11 @@ User Machine
 | **SofaScore** | ✅ full incidents | ✅ | Internal API — `api.sofascore.com/api/v1` | Free |
 | **API-Football** | ✅ full events | ✅ | Official API — `v3.football.api-sports.io` | $19/mo (Pro) |
 | **365Scores** | ❌ score only | ✅ | Internal API — `webws.365scores.com/web/` | Free |
+| **Google** | ✅ live search snippets | — | Custom Search JSON API — `googleapis.com` | Free (100/day) |
+
+Google does not expose structured match data, but its search snippets serve as an **integrated verification panel**: for each live match, the system automatically fetches the top 3 results and displays them inside each divergence card. The analyst sees title, snippet and link — without leaving the dashboard.
+
+> **Free tier limit:** 100 searches/day. At 120s interval with ~2-3 simultaneous matches, the free tier is sufficient. Beyond that, Google charges $5 per 1,000 additional searches.
 
 ### Divergence rules
 
