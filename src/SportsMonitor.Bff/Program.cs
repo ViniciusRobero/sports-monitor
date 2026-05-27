@@ -45,6 +45,7 @@ builder.Services.AddSingleton<IDivergenceRule, ScoreMismatchRule>();
 builder.Services.AddSingleton<IDivergenceRule, GoalScorerMismatchRule>();
 builder.Services.AddSingleton<IDivergenceRule, MissingGoalRule>();
 builder.Services.AddSingleton<IDivergenceRule, CardMismatchRule>();
+builder.Services.AddSingleton<IDivergenceRule, MatchStatusMismatchRule>();
 builder.Services.AddSingleton<DivergenceEngine>();
 
 builder.Services.AddSingleton<IAlertChannel, SignalRAlertChannel>();

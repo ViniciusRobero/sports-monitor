@@ -32,6 +32,10 @@ import { LocalTimePipe } from './local-time.pipe';
         }
       </div>
 
+      <div class="quick-links">
+        <a [href]="googleUrl()" target="_blank" class="google-link">🔍 Google</a>
+      </div>
+
       @if (!verified()) {
         <div class="verify-form">
           <input [(ngModel)]="replayLink" placeholder="Replay link (YouTube, etc.)" />
@@ -82,6 +86,9 @@ import { LocalTimePipe } from './local-time.pipe';
     .btn-confirm { background: #a6e3a1; color: #1e1e2e; }
     .btn-false { background: #6c7086; color: #cdd6f4; }
     .btn-ignore { background: #313244; color: #6c7086; }
+    .quick-links { margin-bottom: 6px; }
+    .google-link { font-size: 12px; padding: 3px 8px; background: #313244; border-radius: 3px; color: #89b4fa; text-decoration: none; }
+    .google-link:hover { background: #45475a; }
     .verified-info { display: flex; gap: 10px; font-size: 12px; color: #6c7086; margin-top: 4px; }
     .verified-info a { color: #89b4fa; }
     .notes { font-style: italic; }
@@ -93,6 +100,11 @@ export class DivergenceCard {
   notes = '';
 
   constructor(private alerts: AlertService) {}
+
+  googleUrl(): string {
+    const q = encodeURIComponent(`${this.d().homeTeam} ${this.d().awayTeam} placar ao vivo`);
+    return `https://www.google.com/search?q=${q}`;
+  }
 
   verified(): boolean {
     return ['Confirmed', 'FalsePositive', 'Ignored'].includes(this.d().verificationStatus);
