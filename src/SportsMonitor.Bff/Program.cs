@@ -3,6 +3,7 @@ using System.Threading.Channels;
 using Microsoft.Extensions.Options;
 using SportsMonitor.Application;
 using SportsMonitor.Application.Rules;
+using SportsMonitor.Workers;
 using SportsMonitor.Bff.Alerts;
 using SportsMonitor.Bff.Hubs;
 using SportsMonitor.Domain.Configuration;
@@ -25,6 +26,8 @@ builder.Services.Configure<ApiFootballOptions>(
     builder.Configuration.GetSection("Providers:ApiFootball"));
 builder.Services.Configure<BetsApiOptions>(
     builder.Configuration.GetSection("Providers:BetsApi"));
+builder.Services.Configure<SofaScoreOptions>(
+    builder.Configuration.GetSection("Providers:SofaScore"));
 
 builder.Services.AddSingleton(Channel.CreateUnbounded<Divergence>(
     new UnboundedChannelOptions { SingleReader = true }));
@@ -39,12 +42,14 @@ builder.Services.AddSingleton<IMatchHistoryRepository>(_ =>
 builder.Services.AddSingleton<IDivergenceRule, ScoreMismatchRule>();
 builder.Services.AddSingleton<IDivergenceRule, GoalScorerMismatchRule>();
 builder.Services.AddSingleton<IDivergenceRule, MissingGoalRule>();
+builder.Services.AddSingleton<IDivergenceRule, CardMismatchRule>();
 builder.Services.AddSingleton<DivergenceEngine>();
 
 builder.Services.AddSingleton<IAlertChannel, SignalRAlertChannel>();
 builder.Services.AddHostedService<AlertWorker>();
 builder.Services.AddHostedService<ApiFootballWorker>();
 builder.Services.AddHostedService<BetsApiWorker>();
+builder.Services.AddHostedService<SofaScoreWorker>();
 
 builder.Services.AddHttpClient<ApiFootballProvider>((sp, client) =>
 {
@@ -63,6 +68,15 @@ builder.Services.AddHttpClient<BetsApiProvider>((sp, client) =>
 });
 builder.Services.AddSingleton(sp =>
     sp.GetRequiredService<IOptionsMonitor<BetsApiOptions>>().CurrentValue);
+
+builder.Services.AddHttpClient<SofaScoreProvider>((sp, client) =>
+{
+    var options = sp.GetRequiredService<IOptionsMonitor<SofaScoreOptions>>().CurrentValue;
+    client.BaseAddress = new Uri(options.BaseUrl);
+    client.DefaultRequestHeaders.Add("User-Agent", options.UserAgent);
+});
+builder.Services.AddSingleton(sp =>
+    sp.GetRequiredService<IOptionsMonitor<SofaScoreOptions>>().CurrentValue);
 
 var app = builder.Build();
 

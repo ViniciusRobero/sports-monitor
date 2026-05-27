@@ -37,6 +37,11 @@ public class MatchBuilder
         _events.Add(new MatchEvent(EventType.YellowCard, minute, player, team));
         return this;
     }
+    public MatchBuilder WithRedCard(int minute, string player, string team = "home")
+    {
+        _events.Add(new MatchEvent(EventType.RedCard, minute, player, team));
+        return this;
+    }
 
     public NormalizedMatch Build() => new(
         _matchId, _homeTeam, _awayTeam, _competition,
