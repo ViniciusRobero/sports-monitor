@@ -12,6 +12,7 @@ using SportsMonitor.Domain.Models;
 using SportsMonitor.Infrastructure.Providers;
 using SportsMonitor.Infrastructure.Repositories;
 using SportsMonitor.Infrastructure.Resolvers;
+using SportsMonitor.Infrastructure.Services;
 using SportsMonitor.Infrastructure.Stores;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -29,6 +30,8 @@ builder.Services.Configure<SofaScoreOptions>(
     builder.Configuration.GetSection("Providers:SofaScore"));
 builder.Services.Configure<Scores365Options>(
     builder.Configuration.GetSection("Providers:Scores365"));
+builder.Services.Configure<GoogleSearchOptions>(
+    builder.Configuration.GetSection("Providers:Google"));
 
 builder.Services.AddSingleton(Channel.CreateUnbounded<Divergence>(
     new UnboundedChannelOptions { SingleReader = true }));
@@ -36,6 +39,7 @@ builder.Services.AddSingleton(sp => sp.GetRequiredService<Channel<Divergence>>()
 builder.Services.AddSingleton(sp => sp.GetRequiredService<Channel<Divergence>>().Writer);
 
 builder.Services.AddSingleton<ISnapshotStore, InMemorySnapshotStore>();
+builder.Services.AddSingleton<GoogleSnapshotStore>();
 builder.Services.AddSingleton<IMatchResolver, FuzzyMatchResolver>();
 builder.Services.AddSingleton<IMatchHistoryRepository>(_ =>
     new JsonlMatchHistoryRepository(Path.Combine(AppContext.BaseDirectory, "data")));
@@ -49,6 +53,7 @@ builder.Services.AddSingleton<DivergenceEngine>();
 
 builder.Services.AddSingleton<IAlertChannel, SignalRAlertChannel>();
 builder.Services.AddHostedService<AlertWorker>();
+builder.Services.AddHostedService<GoogleSearchWorker>();
 builder.Services.AddHostedService<ApiFootballWorker>();
 builder.Services.AddHostedService<BetsApiWorker>();
 builder.Services.AddHostedService<SofaScoreWorker>();
@@ -90,6 +95,10 @@ builder.Services.AddHttpClient<Scores365Provider>((sp, client) =>
 });
 builder.Services.AddSingleton(sp =>
     sp.GetRequiredService<IOptionsMonitor<Scores365Options>>().CurrentValue);
+
+builder.Services.AddHttpClient<GoogleSearchService>();
+builder.Services.AddSingleton(sp =>
+    sp.GetRequiredService<IOptionsMonitor<GoogleSearchOptions>>().CurrentValue);
 
 var app = builder.Build();
 

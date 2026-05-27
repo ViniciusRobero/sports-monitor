@@ -1,6 +1,6 @@
 import { Component, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Divergence, VerificationStatus } from './models';
+import { Divergence, GoogleSearchSnapshot, VerificationStatus } from './models';
 import { AlertService } from './alert.service';
 import { LocalTimePipe } from './local-time.pipe';
 
@@ -35,6 +35,18 @@ import { LocalTimePipe } from './local-time.pipe';
       <div class="quick-links">
         <a [href]="googleUrl()" target="_blank" class="google-link">🔍 Google</a>
       </div>
+
+      @if (googleSnapshot()) {
+        <div class="google-panel">
+          <div class="google-panel-header">Google — {{ googleSnapshot()!.fetchedAt | localTime }}</div>
+          @for (r of googleSnapshot()!.results; track r.url) {
+            <a [href]="r.url" target="_blank" class="google-result">
+              <span class="g-title">{{ r.title }}</span>
+              <span class="g-snippet">{{ r.snippet }}</span>
+            </a>
+          }
+        </div>
+      }
 
       @if (!verified()) {
         <div class="verify-form">
@@ -92,10 +104,17 @@ import { LocalTimePipe } from './local-time.pipe';
     .verified-info { display: flex; gap: 10px; font-size: 12px; color: #6c7086; margin-top: 4px; }
     .verified-info a { color: #89b4fa; }
     .notes { font-style: italic; }
+    .google-panel { margin-top: 10px; border-top: 1px solid #313244; padding-top: 8px; }
+    .google-panel-header { font-size: 11px; color: #6c7086; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+    .google-result { display: flex; flex-direction: column; gap: 2px; padding: 6px 8px; margin-bottom: 4px; background: #181825; border-radius: 4px; text-decoration: none; }
+    .google-result:hover { background: #313244; }
+    .g-title { color: #89b4fa; font-size: 12px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .g-snippet { color: #a6adc8; font-size: 11px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   `]
 })
 export class DivergenceCard {
   d = input.required<Divergence>();
+  googleSnapshot = input<GoogleSearchSnapshot | null>(null);
   replayLink = '';
   notes = '';
 
