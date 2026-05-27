@@ -314,3 +314,64 @@ Definir a arquitetura técnica do sistema com design patterns simples, extensív
 ### Next Step
 
 Phase 04: criar PHASE_04_MVP_IMPLEMENTATION_PLAN.md com tasks implementáveis em ordem.
+
+---
+
+## 2026-05-26 - Phase 04 MVP Implementation Start
+
+### Goal
+
+Retomar a partir do plano de implementação e estabilizar os primeiros componentes do MVP com testes.
+
+### Work Done
+
+- Implementou `JsonlMatchHistoryRepository`
+- Corrigiu `MatchBuilder.WithCollectedAt`
+- Adicionou `DivergenceBuilder` para testes
+- Implementou `DivergenceEngine`
+- Adicionou modelos de configuração dos providers
+- Implementou `ApiFootballProvider` com mapeamento de JSON mockado
+- Adicionou testes para JSONL, engine reativo e provider
+- Atualizou handoff em `PROJECT_CONTEXT.md` e `ai-notes/NEXT_STEPS.md`
+
+### Current Test Status
+
+- `dotnet test SportsMonitor.slnx`
+- Resultado: 40 passed, 0 failed
+
+### Next Step
+
+Criar projeto Workers e implementar `PollingWorker` base + `ApiFootballWorker`, depois iniciar o BFF/SignalR.
+
+---
+
+## 2026-05-26 - Phase 04 Workers and BFF Start
+
+### Goal
+
+Continuar a implementação do MVP e salvar contexto antes do limite da sessão.
+
+### Work Done
+
+- Criou projeto `SportsMonitor.Workers`
+- Implementou `PollingWorker` base com `CollectOnceAsync` testável
+- Implementou `ApiFootballWorker`
+- Implementou `AlertWorker`
+- Criou projeto `SportsMonitor.Bff`
+- Implementou endpoints:
+  - `GET /api/matches/live`
+  - `GET /api/divergences`
+  - `POST /api/divergences/{id}/verify`
+- Implementou `AlertHub` em `/hubs/alerts`
+- Implementou `SignalRAlertChannel`
+- Fez wiring inicial de DI no `Program.cs`
+- Adicionou `appsettings.json` com `ApiFootball` desabilitado por padrão
+
+### Current Test Status
+
+- `dotnet test SportsMonitor.slnx`
+- Resultado: 40 passed, 0 failed
+
+### Next Step
+
+Retomar validando `dotnet run --project SportsMonitor.Bff`, depois criar o dashboard Angular mínimo com SignalR e som de alerta.
