@@ -5,7 +5,7 @@ using SportsMonitor.Domain.Models;
 
 namespace SportsMonitor.Workers.Base;
 
-public abstract class PollingWorker : BackgroundService
+public abstract class PollingWorker : BackgroundService, IRefreshable
 {
     private readonly ISnapshotStore _store;
     private readonly IMatchHistoryRepository _history;
