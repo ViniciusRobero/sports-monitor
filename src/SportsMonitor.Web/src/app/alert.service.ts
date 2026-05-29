@@ -1,7 +1,7 @@
 import { Injectable, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import * as signalR from '@microsoft/signalr';
-import { Divergence, GoogleSearchSnapshot, LiveMatchGroup, VerificationUpdate } from './models';
+import { Divergence, GoogleSearchSnapshot, LiveMatchGroup, MatchSnapshot, VerificationUpdate } from './models';
 
 @Injectable({ providedIn: 'root' })
 export class AlertService {
@@ -53,8 +53,31 @@ export class AlertService {
     return this.divergences().filter(d => d.matchId === matchId);
   }
 
+  divergencesForSourceAndMatch(source: string, matchId: string): Divergence[] {
+    return this.divergences().filter(
+      d => d.matchId === matchId &&
+           !['Ignored'].includes(d.verificationStatus) &&
+           (d.sourceA === source || d.sourceB === source)
+    );
+  }
+
+  snapshotsBySource(): Map<string, MatchSnapshot[]> {
+    const map = new Map<string, MatchSnapshot[]>();
+    for (const group of this.liveMatches()) {
+      for (const snap of group) {
+        if (!map.has(snap.source)) map.set(snap.source, []);
+        map.get(snap.source)!.push(snap);
+      }
+    }
+    return map;
+  }
+
   liveMatchIds(): Set<string> {
     return new Set(this.liveMatches().flatMap(g => g.map(s => s.matchId)));
+  }
+
+  ignoreDivergence(id: string): void {
+    this.verify(id, { status: 'Ignored', replayLink: null, analystNotes: null, manualActionStatus: null });
   }
 
   private fetchGoogleResults(): void {
