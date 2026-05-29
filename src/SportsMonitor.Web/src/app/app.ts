@@ -10,17 +10,17 @@ import { DivergenceCard } from './divergence-card';
     <header>
       <span class="title">Sports Monitor</span>
       <span class="conn" [class.ok]="alerts.connected()">
-        {{ alerts.connected() ? 'Live' : 'Disconnected' }}
+        {{ alerts.connected() ? 'Ao vivo' : 'Desconectado' }}
       </span>
-      <span class="count">{{ alerts.divergences().length }} divergences</span>
+      <span class="count">{{ alerts.divergences().length }} divergências</span>
       <button class="btn-refresh" (click)="refresh()" [disabled]="refreshing()">
-        {{ refreshing() ? '...' : '↻ Refresh' }}
+        {{ refreshing() ? '...' : '↻ Atualizar' }}
       </button>
     </header>
 
     <main>
       @if (alerts.divergences().length === 0) {
-        <div class="empty">No divergences detected. Monitoring live matches...</div>
+        <div class="empty">Nenhuma divergência detectada. Monitorando partidas ao vivo...</div>
       }
       @for (d of alerts.divergences(); track d.id) {
         <app-divergence-card [d]="d" [googleSnapshot]="alerts.googleForMatch(d.matchId)" />
