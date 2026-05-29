@@ -388,18 +388,20 @@ Continue from the packaged MVP and make the demo more useful for user testing, e
 
 - Reworked `DemoWorker` to inject richer demo data without API keys.
 - Added Bet365 and Google as first-class mock sources in the demo.
-- Added four demo match groups:
+- Added five demo match groups:
   - Flamengo x Palmeiras
+  - Botafogo x Corinthians
   - Manchester City x Liverpool
   - Brasil x Argentina
   - Real Madrid x Barcelona
+- Added a quick Botafogo x Corinthians score mismatch that appears about 5 seconds after startup.
 - Implemented a phased Flamengo x Palmeiras simulation that updates every 10 seconds.
 - Added mocked Google snippets and links for each demo match.
 - Fixed dashboard source ordering so Google appears immediately after Bet365.
 - Fixed the dashboard grid to support five source columns and scrolling.
 - Rebuilt Angular production assets into `src/SportsMonitor.Bff/wwwroot`.
 - Ran `publish.ps1` and generated the local distributable package under `publish\`.
-- Verified the published BFF returns 4 match groups and 4 Google snapshots.
+- Verified the published BFF returns 5 match groups and 5 Google snapshots after the quick scenario runs.
 - Updated README, PROJECT_CONTEXT, NEXT_STEPS, and SOURCE_RESEARCH_STATUS.
 
 ### Test Status

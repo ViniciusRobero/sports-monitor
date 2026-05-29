@@ -11,6 +11,7 @@ Completed:
 - Providers for SofaScore, 365Scores, API-Football, BetsAPI, and Google Custom Search
 - Divergence rules for score, goal scorer, missing goal, card, and status mismatches
 - DemoWorker with Bet365 and Google as main demo sources
+- Quick Botafogo x Corinthians score mismatch appearing about 5 seconds after startup
 - Phased Flamengo x Palmeiras live simulation updating every 10 seconds
 - Mock Google snippets per demo match
 - Dashboard source layout fixed: Bet365 first, Google second, remaining sources after; grid scroll enabled

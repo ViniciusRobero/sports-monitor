@@ -29,7 +29,7 @@ AI handoff is mandatory. `PROJECT_CONTEXT.md` and `/ai-notes/` files must be kep
 - Domain, Application, Infrastructure completos
 - 5 providers: SofaScore, 365Scores, ApiFootball, BetsAPI, Google Custom Search
 - 5 regras de divergência: ScoreMismatch, GoalScorerMismatch, MissingGoal, CardMismatch, MatchStatusMismatch
-- DemoWorker: modo demo rico sem API keys, com Bet365 e Google como fontes principais, 4 partidas mockadas e Flamengo x Palmeiras avançando em fases a cada 10s
+- DemoWorker: modo demo rico sem API keys, com Bet365 e Google como fontes principais, 5 partidas mockadas, divergência rápida de resultado em ~5s e Flamengo x Palmeiras avançando em fases a cada 10s
 - WPF + WebView2 shell com wait-for-ready e logging em arquivo
 - Dashboard Angular com botão de refresh manual, painéis por fonte, Google na segunda coluna e scroll habilitado no grid
 - publish.ps1: pacote single-exe para Windows
@@ -232,11 +232,11 @@ Date: 2026-05-29
 
 Summary:
 - Expanded `DemoWorker` with Bet365 and Google as primary demo sources.
-- Added 4 demo matches and a phased Flamengo x Palmeiras simulation that updates every 10 seconds.
+- Added 5 demo matches, including a quick Botafogo x Corinthians score mismatch after ~5 seconds, plus a phased Flamengo x Palmeiras simulation that updates every 10 seconds.
 - Mocked Google verification snippets for every demo match.
 - Fixed dashboard layout so Google appears in the second column and the source grid can scroll.
 - Rebuilt Angular static assets into `src/SportsMonitor.Bff/wwwroot`.
-- Generated `publish\` and verified the published BFF returns 4 match groups and 4 Google snapshots.
+- Generated `publish\` and verified the published BFF returns 5 match groups and 5 Google snapshots.
 - Test status: `dotnet test src\SportsMonitor.slnx` => 68 passed.
 
 Files changed:

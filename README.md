@@ -167,6 +167,7 @@ curl http://localhost:5000/api/divergences
 O sistema inclui um **DemoWorker** que injeta dados fictícios a cada 10 segundos para apresentações e testes. Bet365 e Google aparecem como fontes principais no dashboard, com SofaScore, 365Scores e API-Football como fontes de comparação.
 
 - **Flamengo × Palmeiras** — partida simulada em fases: início, cartão, gol com marcador errado na Bet365, correção, intervalo, empate atrasado na Bet365, cartão divergente e fim de jogo.
+- **Botafogo × Corinthians** — divergência rápida de resultado: em cerca de 5 segundos, Google/SofaScore/365Scores mostram 1-0 enquanto Bet365 ainda mostra 0-0.
 - **Manchester City × Liverpool** — jogo já em andamento com gols e cartão.
 - **Brasil × Argentina** — jogo sem gols com eventos disciplinares.
 - **Real Madrid × Barcelona** — clássico com gols e cartão.

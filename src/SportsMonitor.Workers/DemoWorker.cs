@@ -47,6 +47,9 @@ public class DemoWorker : BackgroundService
         SeedBaseMatches();
         InjectLiveMatchPhase(0);
 
+        await Task.Delay(TimeSpan.FromSeconds(5), ct);
+        InjectQuickScoreMismatch();
+
         var phase = 1;
         while (!ct.IsCancellationRequested)
         {
@@ -109,6 +112,45 @@ public class DemoWorker : BackgroundService
             ("El Clasico em tempo real",
                 "Placar empatado em 1-1 aos 70 minutos, com volume maior do Barcelona nos ultimos lances.",
                 "https://www.google.com/search?q=El+Clasico+tempo+real"));
+
+        UpsertAcrossSources("demo-bot-cor", "Botafogo", "Corinthians", "Brasileirao Serie A",
+            0, 0, [], "bet365", "google", "365scores", "sofascore");
+        UpsertGoogle("demo-bot-cor", "Botafogo", "Corinthians",
+            "Botafogo Corinthians ao vivo resultado",
+            ("Botafogo x Corinthians ao vivo",
+                "Partida comeca equilibrada, ainda sem gols nos primeiros minutos.",
+                "https://www.google.com/search?q=Botafogo+Corinthians+ao+vivo"),
+            ("Tempo real Botafogo Corinthians",
+                "Placar inicial 0 x 0 enquanto as equipes ainda se estudam.",
+                "https://www.google.com/search?q=Botafogo+Corinthians+tempo+real"));
+    }
+
+    private void InjectQuickScoreMismatch()
+    {
+        _logger.LogInformation("[Demo] Quick scenario - score mismatch in Botafogo x Corinthians");
+
+        var goal = new[]
+        {
+            new MatchEvent(EventType.Goal, 9, "Tiquinho Soares", "home")
+        };
+
+        UpsertMatch("demo-bot-cor", "Botafogo", "Corinthians", "Brasileirao Serie A",
+            0, 0, "bet365", []);
+        UpsertMatch("demo-bot-cor", "Botafogo", "Corinthians", "Brasileirao Serie A",
+            1, 0, "google", goal);
+        UpsertMatch("demo-bot-cor", "Botafogo", "Corinthians", "Brasileirao Serie A",
+            1, 0, "sofascore", goal);
+        UpsertMatch("demo-bot-cor", "Botafogo", "Corinthians", "Brasileirao Serie A",
+            1, 0, "365scores", goal);
+
+        UpsertGoogle("demo-bot-cor", "Botafogo", "Corinthians",
+            "Tiquinho Soares gol Botafogo Corinthians 9",
+            ("Gol do Botafogo: Tiquinho marca aos 9'",
+                "Google e fontes de tempo real ja mostram Botafogo 1 x 0 Corinthians, mas Bet365 ainda aparece 0 x 0.",
+                "https://www.google.com/search?q=Tiquinho+Soares+gol+Botafogo+Corinthians+9"),
+            ("Divergencia de placar detectada",
+                "Placar atualizado em fontes externas: Botafogo 1 x 0 Corinthians. Bet365 segue atrasada no mock.",
+                "https://www.google.com/search?q=Botafogo+1+0+Corinthians+Tiquinho"));
     }
 
     private void InjectLiveMatchPhase(int phase)
