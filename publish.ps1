@@ -34,14 +34,12 @@ dotnet publish $bff `
 
 if ($LASTEXITCODE -ne 0) { throw "BFF publish falhou" }
 
-# 3. Desktop — self-contained win-x64 single-file
+# 3. Desktop — self-contained win-x64 (WPF não suporta single-file com DLLs nativas)
 Write-Host "==> Publicando Desktop..." -ForegroundColor Cyan
 dotnet publish $desktop `
     --configuration Release `
     --runtime win-x64 `
     --self-contained true `
-    -p:PublishSingleFile=true `
-    -p:EnableCompressionInSingleFile=true `
     --output $out
 
 if ($LASTEXITCODE -ne 0) { throw "Desktop publish falhou" }
