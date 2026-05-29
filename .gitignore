@@ -14,3 +14,8 @@ packages/
 # OS
 .DS_Store
 Thumbs.db
+
+# Secrets — never commit real API keys
+appsettings.Development.json
+appsettings.Local.json
+publish/
