@@ -28,7 +28,7 @@ import { LocalTimePipe } from './local-time.pipe';
           <span>{{ d().sourceBValue }}</span>
         </div>
         @if (d().officialSourceValue) {
-          <div class="official">Official: {{ d().officialSourceValue }}</div>
+          <div class="official">Oficial: {{ d().officialSourceValue }}</div>
         }
       </div>
 
@@ -50,12 +50,12 @@ import { LocalTimePipe } from './local-time.pipe';
 
       @if (!verified()) {
         <div class="verify-form">
-          <input [(ngModel)]="replayLink" placeholder="Replay link (YouTube, etc.)" />
-          <textarea [(ngModel)]="notes" placeholder="Analyst notes..." rows="2"></textarea>
+          <input [(ngModel)]="replayLink" placeholder="Link do replay (YouTube, etc.)" />
+          <textarea [(ngModel)]="notes" placeholder="Notas do analista..." rows="2"></textarea>
           <div class="actions">
-            <button class="btn-confirm" (click)="verify('Confirmed')">Confirmed</button>
-            <button class="btn-false" (click)="verify('FalsePositive')">False Positive</button>
-            <button class="btn-ignore" (click)="verify('Ignored')">Ignore</button>
+            <button class="btn-confirm" (click)="verify('Confirmed')">Confirmado</button>
+            <button class="btn-false" (click)="verify('FalsePositive')">Falso Positivo</button>
+            <button class="btn-ignore" (click)="verify('Ignored')">Ignorar</button>
           </div>
         </div>
       } @else {

@@ -22,23 +22,23 @@ public partial class MainWindow : Window
 
     private async void OnLoaded(object sender, RoutedEventArgs e)
     {
-        Log("Desktop started.");
+        Log("Desktop iniciado.");
         StartBff();
 
         await WebView.EnsureCoreWebView2Async();
         WebView.CoreWebView2.Navigate("about:blank");
 
-        Log("Waiting for BFF to be ready...");
+        Log("Aguardando BFF iniciar...");
         var ready = await WaitForBffAsync();
 
         if (ready)
         {
-            Log("BFF ready — navigating.");
+            Log("BFF pronto — abrindo dashboard.");
             WebView.CoreWebView2.Navigate(BffUrl);
         }
         else
         {
-            Log("ERROR: BFF did not respond after 30s. Check logs/bff.log");
+            Log("ERRO: BFF não respondeu após 30s. Verifique logs/bff.log");
             MessageBox.Show(
                 $"O BFF não respondeu.\nVerifique o arquivo de log:\n{_logPath}",
                 "Sports Monitor — Erro de inicialização",
@@ -83,7 +83,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        Log("ERROR: SportsMonitor.Bff.exe not found. Make sure it is in the same folder.");
+        Log("ERRO: SportsMonitor.Bff.exe não encontrado. Verifique se está na mesma pasta.");
     }
 
     private void LaunchProcess(string exe, string? args, string workDir)
@@ -105,7 +105,7 @@ public partial class MainWindow : Window
         _bffProcess.BeginOutputReadLine();
         _bffProcess.BeginErrorReadLine();
 
-        Log($"BFF process started (PID {_bffProcess.Id}).");
+        Log($"Processo BFF iniciado (PID {_bffProcess.Id}).");
     }
 
     private void Log(string message)
@@ -118,7 +118,7 @@ public partial class MainWindow : Window
 
     private void OnClosing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
-        Log("Desktop closing — killing BFF.");
+        Log("Desktop encerrando — finalizando BFF.");
         try { _bffProcess?.Kill(entireProcessTree: true); }
         catch { }
     }
