@@ -10,21 +10,21 @@ import { LocalTimePipe } from './local-time.pipe';
   template: `
     <div class="card" [class]="severityClass()">
       <div class="card-header">
-        <span class="badge">{{ d().severity }}</span>
-        <span class="type">{{ d().type }}</span>
+        <span class="badge">{{ labelSeverity(d().severity) }}</span>
+        <span class="type">{{ labelType(d().type) }}</span>
         <span class="match">{{ d().homeTeam }} vs {{ d().awayTeam }}</span>
         <span class="time">{{ d().detectedAt | localTime }}</span>
-        <span class="status" [class]="statusClass()">{{ d().verificationStatus }}</span>
+        <span class="status" [class]="statusClass()">{{ labelStatus(d().verificationStatus) }}</span>
       </div>
 
       <div class="sources">
         <div class="source">
-          <strong>{{ d().sourceA }}</strong>
+          <strong>{{ labelSource(d().sourceA) }}</strong>
           <span>{{ d().sourceAValue }}</span>
         </div>
         <div class="vs">vs</div>
         <div class="source">
-          <strong>{{ d().sourceB }}</strong>
+          <strong>{{ labelSource(d().sourceB) }}</strong>
           <span>{{ d().sourceBValue }}</span>
         </div>
         @if (d().officialSourceValue) {
@@ -131,6 +131,43 @@ export class DivergenceCard {
 
   severityClass(): string { return this.d().severity; }
   statusClass(): string { return this.d().verificationStatus; }
+
+  labelSeverity(s: string): string {
+    return ({ Critical: 'Crítico', High: 'Alto', Medium: 'Médio', Low: 'Baixo' } as any)[s] ?? s;
+  }
+
+  labelType(t: string): string {
+    return ({
+      ScoreMismatch:        'Placar divergente',
+      GoalScorerMismatch:   'Marcador divergente',
+      MissingGoalEvent:     'Gol ausente',
+      YellowCardMismatch:   'Cartão amarelo divergente',
+      RedCardMismatch:      'Cartão vermelho divergente',
+      MatchStatusMismatch:  'Status da partida divergente',
+      SubstitutionMismatch: 'Substituição divergente',
+      VARDecisionMismatch:  'Decisão de VAR divergente',
+    } as any)[t] ?? t;
+  }
+
+  labelStatus(s: string): string {
+    return ({
+      Pending:      'Pendente',
+      InAnalysis:   'Em análise',
+      Confirmed:    'Confirmado',
+      FalsePositive:'Falso positivo',
+      Ignored:      'Ignorado',
+    } as any)[s] ?? s;
+  }
+
+  labelSource(s: string): string {
+    return ({
+      sofascore:   'SofaScore',
+      bet365:      'Bet365',
+      api_football:'API Football',
+      '365scores': '365Scores',
+      google:      'Google',
+    } as any)[s] ?? s;
+  }
 
   async verify(status: VerificationStatus): Promise<void> {
     await this.alerts.verify(this.d().id, {
