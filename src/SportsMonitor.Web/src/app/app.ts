@@ -45,7 +45,8 @@ const SOURCE_ORDER = ['bet365', 'google', 'sofascore', 'api_football', '365score
     .btn-refresh { margin-left: auto; padding: 4px 12px; background: #313244; border: 1px solid #45475a; color: #cdd6f4; border-radius: 4px; cursor: pointer; font-size: 12px; }
     .btn-refresh:hover:not(:disabled) { background: #45475a; }
     .btn-refresh:disabled { opacity: 0.5; cursor: default; }
-    .grid { display: grid; grid-template-columns: 2fr 2fr 1.5fr 1.5fr; gap: 10px; padding: 10px; flex: 1; overflow: hidden; min-height: 0; }
+    .grid { display: grid; grid-template-columns: minmax(260px, 2fr) minmax(260px, 2fr) repeat(3, minmax(220px, 1.35fr)); gap: 10px; padding: 10px; flex: 1; overflow: auto; min-height: 0; }
+    @media (max-width: 1200px) { .grid { grid-template-columns: repeat(3, minmax(240px, 1fr)); } }
     @media (max-width: 900px) { .grid { grid-template-columns: 1fr 1fr; overflow-y: auto; } }
     @media (max-width: 520px) { .grid { grid-template-columns: 1fr; overflow-y: auto; } }
   `]
@@ -58,9 +59,6 @@ export class App implements OnInit {
     // Show sources in fixed order; include any extra sources at the end
     const allKeys = [...new Set([...SOURCE_ORDER, ...bySource.keys()])];
     return allKeys
-      .filter(k => k !== 'google') // Google is always shown but uses its own data
-      .concat(['google'])
-      .filter((k, i, arr) => arr.indexOf(k) === i) // dedupe
       .map(key => ({ key, snapshots: bySource.get(key) ?? [] }))
       .filter(s => SOURCE_ORDER.includes(s.key) || s.snapshots.length > 0);
   });

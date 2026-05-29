@@ -375,3 +375,44 @@ Continuar a implementação do MVP e salvar contexto antes do limite da sessão.
 ### Next Step
 
 Retomar validando `dotnet run --project SportsMonitor.Bff`, depois criar o dashboard Angular mínimo com SignalR e som de alerta.
+
+---
+
+## 2026-05-29 - Demo Expansion, Dashboard Layout Fix, and Packaging
+
+### Goal
+
+Continue from the packaged MVP and make the demo more useful for user testing, especially around Bet365 and Google as the main sources.
+
+### Work Done
+
+- Reworked `DemoWorker` to inject richer demo data without API keys.
+- Added Bet365 and Google as first-class mock sources in the demo.
+- Added four demo match groups:
+  - Flamengo x Palmeiras
+  - Manchester City x Liverpool
+  - Brasil x Argentina
+  - Real Madrid x Barcelona
+- Implemented a phased Flamengo x Palmeiras simulation that updates every 10 seconds.
+- Added mocked Google snippets and links for each demo match.
+- Fixed dashboard source ordering so Google appears immediately after Bet365.
+- Fixed the dashboard grid to support five source columns and scrolling.
+- Rebuilt Angular production assets into `src/SportsMonitor.Bff/wwwroot`.
+- Ran `publish.ps1` and generated the local distributable package under `publish\`.
+- Verified the published BFF returns 4 match groups and 4 Google snapshots.
+- Updated README, PROJECT_CONTEXT, NEXT_STEPS, and SOURCE_RESEARCH_STATUS.
+
+### Test Status
+
+- `dotnet test src\SportsMonitor.slnx`
+- Result: 68 passed, 0 failed
+
+### Packaging Status
+
+- Deliver the full `publish\` folder, not only `SportsMonitor.Desktop.exe`.
+- Start the app with `publish\SportsMonitor.Desktop.exe`.
+- Demo mode is enabled by default and requires no API keys.
+
+### Next Step
+
+Smoke test the published desktop app on a clean Windows machine, then validate real BetsAPI and Google credentials.

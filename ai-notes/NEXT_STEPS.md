@@ -1,100 +1,67 @@
 # Next Steps
 
-## Phase 01 Status: COMPLETE
+## Current Status: MVP Packaged
 
-Toda a pesquisa de fontes foi concluída. A arquitetura pode ser iniciada.
+Last updated: 2026-05-29
 
----
+The MVP is implemented and locally packaged. The demo mode is enabled by default and does not require API keys.
 
-## Atual: Phase 04 — MVP Implementation
+Completed:
+- Domain, Application, Infrastructure, Workers, BFF, Angular dashboard, and WPF/WebView2 shell
+- Providers for SofaScore, 365Scores, API-Football, BetsAPI, and Google Custom Search
+- Divergence rules for score, goal scorer, missing goal, card, and status mismatches
+- DemoWorker with Bet365 and Google as main demo sources
+- Phased Flamengo x Palmeiras live simulation updating every 10 seconds
+- Mock Google snippets per demo match
+- Dashboard source layout fixed: Bet365 first, Google second, remaining sources after; grid scroll enabled
+- Production Angular build copied to `src/SportsMonitor.Bff/wwwroot`
+- `publish.ps1` generated `publish\SportsMonitor.Desktop.exe`
+- Tests: `dotnet test src\SportsMonitor.slnx` => 68 passing
 
-Phase 01, Phase 02 (requisitos em PHASE_02_PLUS_PLANNING_UPDATE.md) e Phase 03 (arquitetura em PHASE_03_TECHNICAL_ARCHITECTURE.md) estão completos.
+## Immediate Tasks
 
-### Status atual
+1. Smoke test `publish\SportsMonitor.Desktop.exe` on a clean Windows machine.
+2. Zip and deliver the entire `publish\` folder, not only `SportsMonitor.Desktop.exe`.
+3. Confirm WebView2 Runtime is available on the tester machine.
+4. Validate real BetsAPI payloads and adjust `BetsApiProvider` event parsing if needed.
+5. Configure real Google Custom Search credentials and verify quota behavior.
+6. Research FIFA.com live data options for World Cup 2026.
 
-`PHASE_04_MVP_IMPLEMENTATION_PLAN.md` foi criado e a implementação iniciou em `src/`.
+## Packaging Notes
 
-Concluído:
-- Domain: entidades, interfaces e modelos de configuração
-- Application: regras ScoreMismatch, GoalScorerMismatch, MissingGoal
-- Application: DivergenceEngine reativo com fila de alerta
-- Infrastructure: InMemorySnapshotStore, FuzzyMatchResolver, JsonlMatchHistoryRepository
-- Infrastructure: ApiFootballProvider com teste por JSON mockado
-- Workers: PollingWorker, ApiFootballWorker, AlertWorker
-- BFF: projeto ASP.NET Core, endpoints REST, AlertHub, SignalRAlertChannel e DI inicial
-- Testes: `dotnet test SportsMonitor.slnx` => 40 passing
+Run:
 
-Próximas tarefas em ordem:
-1. Validar `dotnet run --project SportsMonitor.Bff` e endpoints locais
-2. Adicionar testes/integration smoke para endpoints do BFF, se necessário
-3. Angular: dashboard mínimo + conexão SignalR + som de alerta
-4. Desktop shell: WPF + WebView2
-5. SofaScoreProvider + Api365ScoresProvider
-6. Demais regras de divergência
-
-### Referências de arquitetura
-
-- `PHASE_03_TECHNICAL_ARCHITECTURE.md` — design patterns, DI, solution structure
-- `PHASE_02_PLUS_PLANNING_UPDATE.md` — requisitos operacionais
-
----
-
-## Pesquisas ainda pendentes
-
-1. **FIFA.com** — Copa do Mundo 2026 (#64, Very High priority); verificar endpoints de partidas ao vivo antes da implementação
-
----
-
-## Validações manuais ainda pendentes
-
-1. **BetsAPI pricing** — acessar betsapi.com/mm/pricing_table (requer login) para confirmar custo e coberturas
-2. **The Odds API suspension status** — testar free tier (500 créditos gratuitos) e verificar se o payload de odds ao vivo inclui campo de status de suspensão de mercado
-3. **Betfair do Brasil** — testar se é possível criar conta Betfair a partir de IP/documentos brasileiros
-4. **API-Football payload** — testar free tier (100 req/dia) para confirmar estrutura de evento ao vivo (gol, artilheiro, minuto, tipo)
-
----
-
-## Tensão de fontes: RESOLVIDA
-
-- **SofaScore**: integrar via `api.sofascore.com/api/v1` (GET /events/live + /event/{id}/incidents)
-- **365Scores**: integrar via `webws.365scores.com/web/` (GET /game/?gameId={id})
-- **Google**: não automatizado — dashboard gera link de busca para verificação manual
-- Detalhes: `PHASE_01_COMPARISON_SOURCES_RESEARCH.md`
-
----
-
-## Fontes MVP confirmadas
-
-| Fonte | Papel | Custo |
-|---|---|---|
-| API-Football (Pro $19/mo) | Dados esportivos ao vivo — primário | $19/mo |
-| BetsAPI | Bet365 live odds + suspensão de mercado | Verificar |
-| The Odds API (Business $99/mo) | Odds agregadas multi-bookmaker | $99/mo |
-| Betfair Exchange API | Exchange live odds + market status | Grátis |
-| OpenLigaDB | Bundesliga/DFB-Pokal grátis (suplementar) | Grátis |
-| football-data.org (free) | Brasileirão + PL + UCL (suplementar) | Grátis |
-| API Futebol (avaliar) | Futebol brasileiro específico (suplementar) | TBD |
-
----
-
-## Stack tecnológica confirmada
-
-```
-Backend:     ASP.NET Core (.NET 8+)
-Workers:     .NET Worker Services
-Dashboard:   Angular
-Real-time:   SignalR
-Database:    SQLite (MVP)
-Desktop:     WPF/WinForms + WebView2 (thin shell)
-Local URL:   http://localhost:5000
+```powershell
+.\publish.ps1
 ```
 
----
+Deliver:
 
-## Não iniciar ainda
+```text
+publish\
+```
 
-- Automação de apostas
-- Login automático em bookmakers
-- Bypass de captcha/anti-bot
-- Scraping de sites protegidos
-- Cloud deployment
+The user starts:
+
+```text
+publish\SportsMonitor.Desktop.exe
+```
+
+The desktop app starts the BFF automatically, opens the dashboard, and writes BFF logs under `publish\logs\`.
+
+## Real Provider Switch
+
+When real credentials are available:
+
+1. Edit `publish\appsettings.json`.
+2. Set `"Demo": { "Enabled": false }`.
+3. Enable the desired providers under `"Providers"`.
+4. Fill `BetsApi.Token`, `Google.ApiKey`, `Google.SearchEngineId`, and other provider keys.
+
+## Still Out Of Scope
+
+- Automated betting
+- Login automation
+- CAPTCHA solving
+- Fingerprint spoofing
+- Scraping protected pages or bypassing access controls

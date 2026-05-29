@@ -29,9 +29,9 @@ AI handoff is mandatory. `PROJECT_CONTEXT.md` and `/ai-notes/` files must be kep
 - Domain, Application, Infrastructure completos
 - 5 providers: SofaScore, 365Scores, ApiFootball, BetsAPI, Google Custom Search
 - 5 regras de divergência: ScoreMismatch, GoalScorerMismatch, MissingGoal, CardMismatch, MatchStatusMismatch
-- DemoWorker: modo demo com 3 cenários de divergência (sem API keys)
+- DemoWorker: modo demo rico sem API keys, com Bet365 e Google como fontes principais, 4 partidas mockadas e Flamengo x Palmeiras avançando em fases a cada 10s
 - WPF + WebView2 shell com wait-for-ready e logging em arquivo
-- Dashboard Angular com botão de refresh manual
+- Dashboard Angular com botão de refresh manual, painéis por fonte, Google na segunda coluna e scroll habilitado no grid
 - publish.ps1: pacote single-exe para Windows
 - 68 testes passando
 
@@ -79,7 +79,7 @@ The system supports this operation — it does **not** replace it.
 |---|---|---|---|
 | SofaScore | Primary comparison | API interna `api.sofascore.com/api/v1` | **Researched** — viável |
 | 365Scores | Primary comparison | API interna `webws.365scores.com/web/` | **Researched** — viável |
-| Google | Primary comparison | Sem endpoint JSON acessível | **Not viable** — link manual no dashboard |
+| Google | Primary verification | Custom Search JSON API + mock de snippets no demo | **Integrado** — painel de verificação no dashboard |
 | Official competition website | **Preferred reference/truth** | Via APIs comerciais (API-Football) | Via aggregators |
 
 ### Reference source rule
@@ -94,7 +94,7 @@ If official source is delayed/missing/inconsistent: divergence is marked for man
 
 **365Scores:** `GET https://webws.365scores.com/web/game/?appTypeId=5&langId=31&timezoneName=America/Sao_Paulo&userCountryId=-1&gameId={id}`. Sem auth.
 
-**Google:** Não viável como fonte automatizada. Dashboard gera link de busca para verificação manual do analista.
+**Google:** Não há endpoint público de live score estruturado. O MVP usa Google Custom Search JSON API para snippets/links de verificação, e o modo demo injeta resultados mockados por partida.
 
 **Boundary:** dados públicos apenas, sem login bypass, sem CAPTCHA solving, sem fingerprint spoofing.
 
@@ -165,8 +165,8 @@ Optional LAN: http://192.168.x.x:5000
 | Live score apps | **Done** | All excluded as direct sources — no official APIs |
 | Bookmakers | **Done** | Betfair Exchange (free API), others via BetsAPI/The Odds API |
 | Official competition websites (63) | **Done** | None have public API; all depend on commercial APIs; OpenLigaDB (Bundesliga) is the only exception |
-| 365Scores | **Pending** | Desired primary source; never researched; API status unknown |
-| FIFA.com (World Cup 2026) | **Pending** | Competition #64; needs source profile before implementation |
+| 365Scores | **Done** | API interna `webws.365scores.com/web/` integrada como comparação |
+| FIFA.com (World Cup 2026) | **Pending** | Competition #64; needs source profile before real-data implementation |
 
 ---
 
@@ -216,35 +216,37 @@ Full list in `PHASE_02_PLUS_PLANNING_UPDATE.md` section 8.
 | Phase | Name | Status |
 |---|---|---|
 | 01 | Data Source Research | **COMPLETE** |
-| 02 | Functional Requirements and Operational Workflow | **Next** |
-| 03 | Technical Architecture | Pending |
-| 04 | MVP Implementation Plan | Pending |
-| 05 | Provider Integration | Pending |
-| 06 | Divergence Engine | Pending |
-| 07 | Dashboard and Manual Verification | Pending |
-| 08 | Local Packaging and Handoff | Pending |
+| 02 | Functional Requirements and Operational Workflow | **CAPTURED** |
+| 03 | Technical Architecture | **COMPLETE** |
+| 04 | MVP Implementation Plan | **COMPLETE** |
+| 05 | Provider Integration | **MVP COMPLETE** |
+| 06 | Divergence Engine | **COMPLETE** |
+| 07 | Dashboard and Manual Verification | **MVP COMPLETE** |
+| 08 | Local Packaging and Handoff | **COMPLETE** |
 
 ---
 
 ## 14. Last Session Summary
 
-Date: 2026-05-26
+Date: 2026-05-29
 
 Summary:
-- Received `PHASE_02_PLUS_PLANNING_UPDATE.md` from user (Josias operational clarifications)
-- Confirmed desktop-first requirement (.NET, WPF/WinForms + WebView2 shell)
-- Confirmed operational workflow: system alerts → analyst verifies manually → analyst acts manually
-- Confirmed primary comparison sources: 365Scores, SofaScore, Google, official competition website
-- Added FIFA World Cup 2026 as competition #64 (Very High priority)
-- Defined phase roadmap 02–08
-- Saved PHASE_02_PLUS_PLANNING_UPDATE.md to project folder
-- Updated PROJECT_CONTEXT.md to reflect all new requirements
+- Expanded `DemoWorker` with Bet365 and Google as primary demo sources.
+- Added 4 demo matches and a phased Flamengo x Palmeiras simulation that updates every 10 seconds.
+- Mocked Google verification snippets for every demo match.
+- Fixed dashboard layout so Google appears in the second column and the source grid can scroll.
+- Rebuilt Angular static assets into `src/SportsMonitor.Bff/wwwroot`.
+- Generated `publish\` and verified the published BFF returns 4 match groups and 4 Google snapshots.
+- Test status: `dotnet test src\SportsMonitor.slnx` => 68 passed.
 
 Files changed:
-- `PHASE_02_PLUS_PLANNING_UPDATE.md` (created)
-- `PROJECT_CONTEXT.md` (updated — this file)
-- `ai-notes/NEXT_STEPS.md` (updated)
-- `ai-notes/SESSION_LOG.md` (updated)
+- `src/SportsMonitor.Workers/DemoWorker.cs`
+- `src/SportsMonitor.Web/src/app/app.ts`
+- `src/SportsMonitor.Bff/appsettings.json`
+- `src/SportsMonitor.Bff/wwwroot/*`
+- `README.md`
+- `PROJECT_CONTEXT.md`
+- `ai-notes/*`
 
 ---
 
@@ -253,12 +255,11 @@ Files changed:
 - Is Betfair account creation feasible from Brazil?
 - What is BetsAPI's exact pricing? (requires login to see pricing table)
 - Does The Odds API Business plan include market suspension status field?
-- Does 365Scores have an official or unofficial API? (never researched)
 - Does FIFA.com expose live match data accessible without login/anti-bot?
 - What is the minimum acceptable odds update frequency for divergence detection?
 - Which competitions are highest priority for MVP?
 - Which alert channel first: dashboard sound only, or Telegram/Discord in Phase 02?
-- **Source tension**: SofaScore/365Scores/Google have no known official APIs — how do we get their data for comparison?
+- **Source tension**: SofaScore/365Scores use internal endpoints; Google is verification/snippet source, not structured live-score truth.
 
 ---
 
@@ -270,18 +271,17 @@ Files changed:
 | The Odds API suspension status field | The Odds API | API trial (free 500 credits) |
 | Betfair account from Brazil | Betfair | Manual registration test |
 | API-Football live event payload structure | API-Football | Free tier (100 req/day) |
-| 365Scores API status | 365Scores | Research session |
 | FIFA.com live data accessibility | FIFA.com | Research session |
 
 ---
 
 ## 17. Next Steps
 
-1. **Phase 02**: Create `PHASE_02_FUNCTIONAL_REQUIREMENTS_AND_OPERATIONAL_WORKFLOW.md`
-2. Research 365Scores (API status, coverage, access method)
-3. Research FIFA.com as source for World Cup 2026
-4. Resolve source tension: how to access SofaScore/365Scores/Google data without ToS violation
-5. Manual validations: BetsAPI pricing, The Odds API suspension field, Betfair Brazil, API-Football payload
+1. Smoke test `publish\SportsMonitor.Desktop.exe` on a clean Windows user machine with WebView2 Runtime installed.
+2. Validate real BetsAPI payloads, especially event/player fields used by `BetsApiProvider`.
+3. Configure real Google Custom Search credentials and tune polling to stay within quota.
+4. Research FIFA.com as source for World Cup 2026.
+5. Manual validations: BetsAPI pricing, The Odds API suspension field, Betfair Brazil, API-Football payload.
 
 ---
 
@@ -293,7 +293,7 @@ Before doing any work:
 2. Read `PHASE_02_PLUS_PLANNING_UPDATE.md` for the full operational requirements, workflow, and phase planning.
 3. Read `PHASE_01_RESEARCH_RESULTS.md` for source research results.
 4. Check `/ai-notes/NEXT_STEPS.md` for immediate tasks.
-5. Phase 01 is complete. Start Phase 02: create `PHASE_02_FUNCTIONAL_REQUIREMENTS_AND_OPERATIONAL_WORKFLOW.md`.
+5. MVP and local packaging are complete; next work should focus on real credential validation, clean-machine smoke testing, and source hardening.
 6. The app is desktop-first (.NET, WPF/WinForms + WebView2), but architecturally web-migratable.
 7. No automated betting — ever.
 8. Update this file before ending the session.

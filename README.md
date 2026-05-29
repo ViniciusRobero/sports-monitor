@@ -164,13 +164,14 @@ curl http://localhost:5000/api/divergences
 
 ### Modo demo (sem API keys)
 
-O sistema inclui um **DemoWorker** que injeta dados fictícios a cada 20 segundos para apresentações e testes:
+O sistema inclui um **DemoWorker** que injeta dados fictícios a cada 10 segundos para apresentações e testes. Bet365 e Google aparecem como fontes principais no dashboard, com SofaScore, 365Scores e API-Football como fontes de comparação.
 
-- **Flamengo × Palmeiras** — GoalScorerMismatch (Pedro vs Arrascaeta)
-- **Brasil × Argentina** — ScoreMismatch (1-0 vs 0-0)
-- **Real Madrid × Barcelona** — CardMismatch (Bellingham vs Vinicius Jr.)
+- **Flamengo × Palmeiras** — partida simulada em fases: início, cartão, gol com marcador errado na Bet365, correção, intervalo, empate atrasado na Bet365, cartão divergente e fim de jogo.
+- **Manchester City × Liverpool** — jogo já em andamento com gols e cartão.
+- **Brasil × Argentina** — jogo sem gols com eventos disciplinares.
+- **Real Madrid × Barcelona** — clássico com gols e cartão.
 
-Ativo por padrão em `appsettings.json`. Desative com `"Demo": { "Enabled": false }` quando os tokens reais estiverem configurados.
+O mock também popula o painel do Google com snippets e links de busca por partida. Ativo por padrão em `appsettings.json`. Desative com `"Demo": { "Enabled": false }` quando os tokens reais estiverem configurados.
 
 ### Como gerar o pacote para uso sem ambiente de desenvolvimento
 
@@ -178,7 +179,7 @@ Ativo por padrão em `appsettings.json`. Desative com `"Demo": { "Enabled": fals
 .\publish.ps1
 ```
 
-Gera a pasta `publish\` com dois arquivos. Execute `publish\SportsMonitor.Desktop.exe` — inicia o BFF automaticamente, aguarda ele ficar pronto e abre o dashboard. Logs em `publish\logs\bff.log`.
+Gera a pasta `publish\`. Para enviar ao usuário final, compacte e entregue a pasta inteira, não apenas o `.exe`, porque o shell desktop precisa do BFF publicado e dos arquivos de runtime ao lado. Execute `publish\SportsMonitor.Desktop.exe` — inicia o BFF automaticamente, aguarda ele ficar pronto e abre o dashboard. Logs em `publish\logs\bff.log`.
 
 ---
 
@@ -389,7 +390,7 @@ cd src/SportsMonitor.Web && ng serve
 .\publish.ps1
 ```
 
-Outputs a `publish\` folder. Run `publish\SportsMonitor.Desktop.exe` — it auto-starts the BFF and opens the dashboard.
+Outputs a `publish\` folder. Zip and deliver the entire folder, not only the `.exe`, because the desktop shell needs the published BFF and runtime files beside it. Run `publish\SportsMonitor.Desktop.exe` — it auto-starts the BFF and opens the dashboard.
 
 ### Important constraints
 

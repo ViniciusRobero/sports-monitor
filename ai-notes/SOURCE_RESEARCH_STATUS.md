@@ -1,6 +1,6 @@
 # Source Research Status
 
-Last updated: 2026-05-26 (Phase 01 COMPLETE + Comparison Sources Research COMPLETE)
+Last updated: 2026-05-29 (MVP packaged + demo data expanded)
 
 | Source | Category | Status | Best Access Method | Local Compatible | MVP Candidate | Notes |
 |---|---|---|---|---|---|---|
@@ -16,8 +16,7 @@ Last updated: 2026-05-26 (Phase 01 COMPLETE + Comparison Sources Research COMPLE
 | Flashscore | Live score app | **Done** | G — Sem API viável | D | Não | Excluído — não faz parte do grupo primário; substituído por SofaScore |
 | FotMob | Live score app | **Done** | G — Sem API viável | D | Não | Excluído — não faz parte do grupo primário |
 | 365Scores | Live score app | **Done** | B — API interna não oficial (webws.365scores.com/web/) | A | **Sim (comparação)** | GET /game/?gameId={id} + /games/results/?competitions={id}; sem auth; parâmetros: appTypeId=5, langId=31, timezoneName=America/Sao_Paulo; risco: frágil + ToS médio |
-| Google (live scores) | Search | **Done** | G — Sem endpoint JSON acessível sem serviço pago | D | Não (link manual) | Sem API pública; scraping via SerpApi ($50+/mo) inviável para MVP; solução: dashboard gera link de busca Google para verificação manual do analista |
-| 365Scores | Live score app | Pendente | TBD | TBD | TBD | Pesquisar |
+| Google (verification snippets) | Search | **Implemented in MVP** | B — Custom Search JSON API / mock snippets in demo | A | **Sim (verificação)** | Não é fonte estruturada de placar ao vivo; usado para snippets e links de verificação no dashboard. DemoWorker injeta resultados mockados por partida |
 | OneFootball | Live score app | Pendente | TBD | TBD | TBD | Pesquisar |
 | Betfair Exchange | Bookmaker (exchange) | **Done** | A — Official REST + WebSocket | A | **Sim** | API gratuita; live streaming; suspension status; distinção: exchange, não bookmaker tradicional |
 | Pinnacle | Bookmaker | **Done** | G — API fechada | — | Não (direto) | API fechada jul/2025; Brasil bloqueado; acessar via The Odds API Business |
