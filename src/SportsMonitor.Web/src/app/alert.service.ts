@@ -1,15 +1,17 @@
 import { Injectable, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import * as signalR from '@microsoft/signalr';
-import { Divergence, GoogleSearchSnapshot, VerificationUpdate } from './models';
+import { Divergence, GoogleSearchSnapshot, LiveMatchGroup, VerificationUpdate } from './models';
 
 @Injectable({ providedIn: 'root' })
 export class AlertService {
   readonly divergences = signal<Divergence[]>([]);
+  readonly liveMatches = signal<LiveMatchGroup[]>([]);
   readonly googleSnapshots = signal<GoogleSearchSnapshot[]>([]);
   readonly connected = signal(false);
 
   private googlePollTimer?: ReturnType<typeof setInterval>;
+  private matchPollTimer?: ReturnType<typeof setInterval>;
 
   private hub = new signalR.HubConnectionBuilder()
     .withUrl('/hubs/alerts')
@@ -33,8 +35,26 @@ export class AlertService {
     await this.hub.start();
     this.connected.set(true);
 
+    this.fetchMatches();
+    this.matchPollTimer = setInterval(() => this.fetchMatches(), 20_000);
+
     this.fetchGoogleResults();
     this.googlePollTimer = setInterval(() => this.fetchGoogleResults(), 120_000);
+  }
+
+  fetchMatches(): void {
+    this.http.get<LiveMatchGroup[]>('/api/matches/live').subscribe({
+      next: groups => this.liveMatches.set(groups),
+      error: () => {}
+    });
+  }
+
+  divergencesForMatch(matchId: string): Divergence[] {
+    return this.divergences().filter(d => d.matchId === matchId);
+  }
+
+  liveMatchIds(): Set<string> {
+    return new Set(this.liveMatches().flatMap(g => g.map(s => s.matchId)));
   }
 
   private fetchGoogleResults(): void {

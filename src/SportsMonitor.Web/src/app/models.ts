@@ -35,6 +35,29 @@ export interface GoogleSearchSnapshot {
   fetchedAt: string;
 }
 
+export interface MatchEvent {
+  type: string;
+  minute: number;
+  playerName: string;
+  team: string;
+}
+
+export interface MatchSnapshot {
+  matchId: string;
+  homeTeam: string;
+  awayTeam: string;
+  competition: string;
+  kickOff: string;
+  homeScore: number;
+  awayScore: number;
+  status: string;
+  events: MatchEvent[];
+  source: string;
+  collectedAt: string;
+}
+
+export type LiveMatchGroup = MatchSnapshot[];
+
 export interface VerificationUpdate {
   status: VerificationStatus;
   replayLink: string | null;
