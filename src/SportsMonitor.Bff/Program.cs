@@ -57,10 +57,20 @@ builder.Services.AddSingleton<IAlertChannel, SignalRAlertChannel>();
 builder.Services.AddHostedService<AlertWorker>();
 builder.Services.AddHostedService<DemoWorker>();
 builder.Services.AddHostedService<GoogleSearchWorker>();
-builder.Services.AddHostedService<ApiFootballWorker>();
-builder.Services.AddHostedService<BetsApiWorker>();
-builder.Services.AddHostedService<SofaScoreWorker>();
-builder.Services.AddHostedService<Scores365Worker>();
+
+// Register polling workers both as IHostedService and IRefreshable (for manual refresh)
+builder.Services.AddSingleton<ApiFootballWorker>();
+builder.Services.AddSingleton<BetsApiWorker>();
+builder.Services.AddSingleton<SofaScoreWorker>();
+builder.Services.AddSingleton<Scores365Worker>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<ApiFootballWorker>());
+builder.Services.AddHostedService(sp => sp.GetRequiredService<BetsApiWorker>());
+builder.Services.AddHostedService(sp => sp.GetRequiredService<SofaScoreWorker>());
+builder.Services.AddHostedService(sp => sp.GetRequiredService<Scores365Worker>());
+builder.Services.AddSingleton<IRefreshable>(sp => sp.GetRequiredService<ApiFootballWorker>());
+builder.Services.AddSingleton<IRefreshable>(sp => sp.GetRequiredService<BetsApiWorker>());
+builder.Services.AddSingleton<IRefreshable>(sp => sp.GetRequiredService<SofaScoreWorker>());
+builder.Services.AddSingleton<IRefreshable>(sp => sp.GetRequiredService<Scores365Worker>());
 
 builder.Services.AddHttpClient<ApiFootballProvider>((sp, client) =>
 {
