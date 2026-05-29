@@ -20,7 +20,41 @@ public class SofaScoreProviderTests
               "startTimestamp": 1748995200,
               "homeScore": { "current": 1 },
               "awayScore": { "current": 0 },
-              "status": { "code": 1, "description": "1st half" }
+              "status": { "code": 6, "description": "1st half", "type": "inprogress" }
+            }
+          ]
+        }
+        """;
+
+    private const string HalfTimeEventsJson = """
+        {
+          "events": [
+            {
+              "id": 99002,
+              "homeTeam": { "name": "Flamengo" },
+              "awayTeam": { "name": "Palmeiras" },
+              "tournament": { "name": "Brasileirao Serie A" },
+              "startTimestamp": 1748995200,
+              "homeScore": { "current": 1 },
+              "awayScore": { "current": 0 },
+              "status": { "code": 7, "description": "Halftime", "type": "inprogress" }
+            }
+          ]
+        }
+        """;
+
+    private const string FinishedEventsJson = """
+        {
+          "events": [
+            {
+              "id": 99003,
+              "homeTeam": { "name": "Flamengo" },
+              "awayTeam": { "name": "Palmeiras" },
+              "tournament": { "name": "Brasileirao Serie A" },
+              "startTimestamp": 1748995200,
+              "homeScore": { "current": 2 },
+              "awayScore": { "current": 1 },
+              "status": { "code": 100, "description": "Finished", "type": "finished" }
             }
           ]
         }
@@ -102,6 +136,22 @@ public class SofaScoreProviderTests
 
         result[0].Events.Should().Contain(e =>
             e.Type == EventType.OwnGoal && e.PlayerName == "Murilo");
+    }
+
+    [Fact]
+    public async Task GetLiveMatchesAsync_MapsHalftimeStatus()
+    {
+        var provider = BuildProvider(HalfTimeEventsJson, IncidentsJson);
+        var result = await provider.GetLiveMatchesAsync(CancellationToken.None);
+        result[0].Status.Should().Be(MatchStatus.HalfTime);
+    }
+
+    [Fact]
+    public async Task GetLiveMatchesAsync_MapsFinishedStatus()
+    {
+        var provider = BuildProvider(FinishedEventsJson, IncidentsJson);
+        var result = await provider.GetLiveMatchesAsync(CancellationToken.None);
+        result[0].Status.Should().Be(MatchStatus.Finished);
     }
 
     private static SofaScoreProvider BuildProvider(string liveJson, string incidentsJson)

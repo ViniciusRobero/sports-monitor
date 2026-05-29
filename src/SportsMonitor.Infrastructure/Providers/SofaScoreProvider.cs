@@ -135,14 +135,30 @@ public class SofaScoreProvider : IMatchDataProvider
     private static MatchStatus MapStatus(JsonElement ev)
     {
         if (!ev.TryGetProperty("status", out var status)) return MatchStatus.Live;
-        var code = status.TryGetProperty("code", out var c) ? c.GetInt32() : -1;
-        return code switch
+
+        var type = status.TryGetProperty("type", out var t) ? t.GetString() ?? "" : "";
+        var description = status.TryGetProperty("description", out var d) ? d.GetString() ?? "" : "";
+
+        return type switch
         {
-            0 => MatchStatus.NotStarted,
-            6 or 7 => MatchStatus.HalfTime,
-            100 => MatchStatus.Finished,
-            60 or 70 => MatchStatus.Postponed,
-            _ => MatchStatus.Live
+            "notstarted" => MatchStatus.NotStarted,
+            "finished" => MatchStatus.Finished,
+            "postponed" => MatchStatus.Postponed,
+            "cancelled" or "canceled" => MatchStatus.Cancelled,
+            "inprogress" when description.Contains("Halftime", StringComparison.OrdinalIgnoreCase)
+                           || description.Equals("HT", StringComparison.OrdinalIgnoreCase)
+                => MatchStatus.HalfTime,
+            "inprogress" => MatchStatus.Live,
+            // fallback for unexpected type values — use numeric code
+            _ => status.TryGetProperty("code", out var c) ? c.GetInt32() switch
+            {
+                0 => MatchStatus.NotStarted,
+                7 => MatchStatus.HalfTime,
+                100 => MatchStatus.Finished,
+                60 => MatchStatus.Postponed,
+                70 => MatchStatus.Cancelled,
+                _ => MatchStatus.Live
+            } : MatchStatus.Live
         };
     }
 }
