@@ -21,19 +21,24 @@ AI handoff is mandatory. `PROJECT_CONTEXT.md` and `/ai-notes/` files must be kep
 **Phase 01 — Data Source Research: COMPLETE**
 **Phase 03 — Technical Architecture: COMPLETE** (Phase 02 requirements já capturados em PHASE_02_PLUS_PLANNING_UPDATE.md)
 
-**Current: Phase 04 — MVP Implementation**
+**Phase 04 — MVP Implementation: COMPLETE**
+**Phase 08 — Local Packaging: COMPLETE**
 
-Phase 04 plan exists in `PHASE_04_MVP_IMPLEMENTATION_PLAN.md`. Implementation has started in `src/`.
+### O que está implementado (2026-05-29)
 
-Implemented so far:
-- Domain models, interfaces, and provider configuration models
-- Application rules: ScoreMismatch, GoalScorerMismatch, MissingGoal
-- Infrastructure: InMemorySnapshotStore, FuzzyMatchResolver, JsonlMatchHistoryRepository
-- Infrastructure provider: ApiFootballProvider with mocked mapping test
-- Application: DivergenceEngine with persistence + alert queue flow
-- Workers: PollingWorker, ApiFootballWorker, AlertWorker
-- BFF: ASP.NET Core project, REST endpoints, AlertHub, SignalRAlertChannel, DI wiring
-- Tests: 40 passing via `dotnet test SportsMonitor.slnx`
+- Domain, Application, Infrastructure completos
+- 5 providers: SofaScore, 365Scores, ApiFootball, BetsAPI, Google Custom Search
+- 5 regras de divergência: ScoreMismatch, GoalScorerMismatch, MissingGoal, CardMismatch, MatchStatusMismatch
+- DemoWorker: modo demo com 3 cenários de divergência (sem API keys)
+- WPF + WebView2 shell com wait-for-ready e logging em arquivo
+- Dashboard Angular com botão de refresh manual
+- publish.ps1: pacote single-exe para Windows
+- 68 testes passando
+
+### Pendências
+- API-Football key ($19/mês — api-sports.io)
+- BetsAPI token (pago — betsapi.com) + validar campo LA com payload real
+- Desabilitar Demo.Enabled quando tokens reais estiverem configurados
 
 ---
 

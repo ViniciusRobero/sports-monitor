@@ -8,7 +8,7 @@
 
 Sistema **local, desktop-first** que monitora partidas de futebol ao vivo em múltiplas fontes de dados, detecta divergências em tempo real e alerta o analista com um som ("apito") para que ele verifique manualmente e atue na Bet365.
 
-> **Status:** MVP implementado — 4 provedores, 5 regras de divergência, dashboard Angular, shell WPF. 66 testes passando.
+> **Status:** MVP implementado — 5 provedores, 5 regras de divergência, dashboard Angular, shell WPF, modo demo. 68 testes passando.
 
 ---
 
@@ -162,13 +162,23 @@ curl http://localhost:5000/api/divergences
 
 ---
 
+### Modo demo (sem API keys)
+
+O sistema inclui um **DemoWorker** que injeta dados fictícios a cada 20 segundos para apresentações e testes:
+
+- **Flamengo × Palmeiras** — GoalScorerMismatch (Pedro vs Arrascaeta)
+- **Brasil × Argentina** — ScoreMismatch (1-0 vs 0-0)
+- **Real Madrid × Barcelona** — CardMismatch (Bellingham vs Vinicius Jr.)
+
+Ativo por padrão em `appsettings.json`. Desative com `"Demo": { "Enabled": false }` quando os tokens reais estiverem configurados.
+
 ### Como gerar o pacote para uso sem ambiente de desenvolvimento
 
 ```powershell
 .\publish.ps1
 ```
 
-Gera a pasta `publish\` com dois arquivos. Basta executar `publish\SportsMonitor.Desktop.exe` — ele inicia o BFF automaticamente e abre o dashboard.
+Gera a pasta `publish\` com dois arquivos. Execute `publish\SportsMonitor.Desktop.exe` — inicia o BFF automaticamente, aguarda ele ficar pronto e abre o dashboard. Logs em `publish\logs\bff.log`.
 
 ---
 
@@ -222,11 +232,11 @@ src/
 ├── SportsMonitor.Domain/          # Entidades e interfaces — zero dependências externas
 ├── SportsMonitor.Application/     # DivergenceEngine + 5 regras
 ├── SportsMonitor.Infrastructure/  # 4 provedores, repositório JSONL, resolver, store
-├── SportsMonitor.Workers/         # 5 workers hospedados (4 polling + 1 alerta)
+├── SportsMonitor.Workers/         # 7 workers (4 polling + AlertWorker + GoogleSearchWorker + DemoWorker)
 ├── SportsMonitor.Bff/             # Host ASP.NET Core — REST API + SignalR hub
 ├── SportsMonitor.Web/             # Dashboard Angular 21
 ├── SportsMonitor.Desktop/         # Shell WPF + WebView2
-└── SportsMonitor.Tests/           # 66 testes xUnit
+└── SportsMonitor.Tests/           # 68 testes xUnit
 ```
 
 ---
@@ -258,7 +268,7 @@ src/
 
 A **local-first, desktop-first** system that monitors live football/soccer matches across multiple data sources, detects divergences in real time, and alerts the analyst with an audible sound so they can manually verify and act on Bet365.
 
-> **Status:** MVP implemented — 4 providers, 5 divergence rules, Angular dashboard, WPF desktop shell. 66 tests passing.
+> **Status:** MVP implemented — 5 providers, 5 divergence rules, Angular dashboard, WPF shell, demo mode. 68 tests passing.
 
 ---
 
