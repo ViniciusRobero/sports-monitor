@@ -32,6 +32,8 @@ builder.Services.Configure<Scores365Options>(
     builder.Configuration.GetSection("Providers:Scores365"));
 builder.Services.Configure<GoogleSearchOptions>(
     builder.Configuration.GetSection("Providers:Google"));
+builder.Services.Configure<DemoOptions>(
+    builder.Configuration.GetSection("Demo"));
 
 builder.Services.AddSingleton(Channel.CreateUnbounded<Divergence>(
     new UnboundedChannelOptions { SingleReader = true }));
@@ -53,6 +55,7 @@ builder.Services.AddSingleton<DivergenceEngine>();
 
 builder.Services.AddSingleton<IAlertChannel, SignalRAlertChannel>();
 builder.Services.AddHostedService<AlertWorker>();
+builder.Services.AddHostedService<DemoWorker>();
 builder.Services.AddHostedService<GoogleSearchWorker>();
 builder.Services.AddHostedService<ApiFootballWorker>();
 builder.Services.AddHostedService<BetsApiWorker>();
