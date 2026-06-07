@@ -117,8 +117,13 @@ sudo find '$AppDir' -mindepth 1 -maxdepth 1 -exec rm -rf {} +
 sudo cp -a "`$HOME/sportsmonitor-upload/." '$AppDir/'
 if [ -f "`$HOME/appsettings.Production.json" ]; then sudo cp "`$HOME/appsettings.Production.json" '$AppDir/'; fi
 sudo chmod +x '$AppDir/SportsMonitor.Bff'
+sudo chmod +x '$AppDir/playwright.sh'
 sudo mkdir -p '$AppDir/data'
 sudo chown -R '${remoteUser}:${remoteUser}' '$AppDir'
+echo "==> Installing Playwright Chromium system dependencies..."
+sudo '$AppDir/playwright.sh' install-deps chromium
+echo "==> Downloading Chromium browser binary..."
+PLAYWRIGHT_BROWSERS_PATH='$AppDir/.playwright' '$AppDir/playwright.sh' install chromium
 sudo mv "`$HOME/sportsmonitor.service" /etc/systemd/system/sportsmonitor.service
 sudo mv "`$HOME/nginx-sportsmonitor.conf" /etc/nginx/sites-available/sportsmonitor
 sudo ln -sfn /etc/nginx/sites-available/sportsmonitor /etc/nginx/sites-enabled/sportsmonitor

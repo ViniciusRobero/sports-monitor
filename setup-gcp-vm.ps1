@@ -67,27 +67,6 @@ Invoke-Gcloud compute ssh $InstanceName `
     --project $ProjectId `
     --command "sudo apt-get update && sudo apt-get install -y nginx ca-certificates"
 
-Write-Host "==> Installing .NET 10 runtime..." -ForegroundColor Cyan
-Invoke-Gcloud compute ssh $InstanceName `
-    --zone $Zone `
-    --project $ProjectId `
-    --command @"
-wget https://packages.microsoft.com/config/ubuntu/22.04/packages-microsoft-prod.deb -O /tmp/packages-microsoft-prod.deb
-sudo dpkg -i /tmp/packages-microsoft-prod.deb
-sudo apt-get update
-sudo apt-get install -y dotnet-runtime-10.0 dotnet-sdk-10.0
-"@
-
-Write-Host "==> Installing Playwright Chromium + dependencies..." -ForegroundColor Cyan
-Invoke-Gcloud compute ssh $InstanceName `
-    --zone $Zone `
-    --project $ProjectId `
-    --command @"
-dotnet tool install --global Microsoft.Playwright.CLI
-export PATH="`$PATH:/root/.dotnet/tools"
-playwright install-deps chromium
-playwright install chromium
-"@
 
 $ip = (& gcloud compute instances describe $InstanceName `
     --zone $Zone `
