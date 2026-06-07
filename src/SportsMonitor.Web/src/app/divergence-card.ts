@@ -8,7 +8,7 @@ import { LocalTimePipe } from './local-time.pipe';
   selector: 'app-divergence-card',
   imports: [LocalTimePipe],
   template: `
-    @if (d().verificationStatus !== 'Ignored') {
+    @if (alerts.isActive(d())) {
       <div class="alert-bar" [class]="d().severity">
         <div class="alert-row">
           <span class="alert-icon">⚠</span>
@@ -20,7 +20,11 @@ import { LocalTimePipe } from './local-time.pipe';
           <span class="sep">≠</span>
           <span class="val">{{ labelSource(d().sourceB) }}: <strong>{{ d().sourceBValue }}</strong></span>
         </div>
-        <button class="btn-ignore" (click)="ignore()">Ignorar</button>
+        <div class="btn-group">
+          <button class="btn-confirm" (click)="confirm()">Confirmar</button>
+          <button class="btn-false-pos" (click)="falsePositive()">Falso Positivo</button>
+          <button class="btn-ignore" (click)="ignore()">Ignorar</button>
+        </div>
       </div>
     }
   `,
@@ -42,16 +46,35 @@ import { LocalTimePipe } from './local-time.pipe';
     .val { color: #a6adc8; }
     .val strong { color: #cdd6f4; }
     .sep { color: #f38ba8; font-weight: bold; }
-    .btn-ignore { align-self: flex-end; padding: 3px 10px; background: #313244; border: 1px solid #45475a; color: #6c7086; border-radius: 4px; cursor: pointer; font-size: 11px; }
+    .btn-group { display: flex; gap: 5px; align-self: flex-end; margin-top: 2px; }
+    .btn-confirm { padding: 3px 10px; background: #1e3a2f; border: 1px solid #a6e3a1; color: #a6e3a1; border-radius: 4px; cursor: pointer; font-size: 11px; }
+    .btn-confirm:hover { background: #2a4f40; }
+    .btn-false-pos { padding: 3px 10px; background: #3a3020; border: 1px solid #f9e2af; color: #f9e2af; border-radius: 4px; cursor: pointer; font-size: 11px; }
+    .btn-false-pos:hover { background: #4a3e28; }
+    .btn-ignore { padding: 3px 10px; background: #313244; border: 1px solid #45475a; color: #6c7086; border-radius: 4px; cursor: pointer; font-size: 11px; }
     .btn-ignore:hover { background: #45475a; color: #cdd6f4; }
+    @media (max-width: 520px) {
+      .btn-group { align-self: stretch; flex-direction: column; }
+      .btn-group button { width: 100%; min-height: 30px; }
+    }
   `]
 })
 export class DivergenceCard {
   d = input.required<Divergence>();
 
-  constructor(private alerts: AlertService) {}
+  constructor(public alerts: AlertService) {}
 
   ignore(): void { this.alerts.ignoreDivergence(this.d().id); }
+
+  confirm(): void {
+    this.alerts.verify(this.d().id, { status: 'Confirmed', replayLink: null, analystNotes: null, manualActionStatus: null })
+      .catch(console.error);
+  }
+
+  falsePositive(): void {
+    this.alerts.verify(this.d().id, { status: 'FalsePositive', replayLink: null, analystNotes: null, manualActionStatus: null })
+      .catch(console.error);
+  }
 
   labelType(t: string): string {
     return ({
@@ -62,6 +85,6 @@ export class DivergenceCard {
   }
 
   labelSource(s: string): string {
-    return ({ sofascore: 'SofaScore', bet365: 'Bet365', api_football: 'API Football', '365scores': '365Scores' } as any)[s] ?? s;
+    return ({ sofascore: 'SofaScore', bet365: 'Bet365', api_football: 'API Football', '365scores': '365Scores', google: 'Google' } as any)[s] ?? s;
   }
 }

@@ -1,6 +1,5 @@
-using System.Net;
+using System.Text.Json;
 using FluentAssertions;
-using SportsMonitor.Domain.Configuration;
 using SportsMonitor.Domain.Models;
 using SportsMonitor.Infrastructure.Providers;
 using SportsMonitor.Infrastructure.Resolvers;
@@ -89,15 +88,12 @@ public class SofaScoreProviderTests
         """;
 
     [Fact]
-    public async Task GetLiveMatchesAsync_MapsMatchCorrectly()
+    public void MapMatch_MapsMatchCorrectly()
     {
-        var provider = BuildProvider(LiveEventsJson, IncidentsJson);
+        var match = MapFirstEvent(LiveEventsJson, IncidentsJson);
 
-        var result = await provider.GetLiveMatchesAsync(CancellationToken.None);
-
-        result.Should().ContainSingle();
-        var match = result[0];
-        match.Source.Should().Be("sofascore");
+        match.Should().NotBeNull();
+        match!.Source.Should().Be("sofascore");
         match.HomeTeam.Should().Be("Flamengo");
         match.AwayTeam.Should().Be("Palmeiras");
         match.HomeScore.Should().Be(1);
@@ -106,79 +102,51 @@ public class SofaScoreProviderTests
     }
 
     [Fact]
-    public async Task GetLiveMatchesAsync_MapsGoalIncident()
+    public void MapMatch_MapsGoalIncident()
     {
-        var provider = BuildProvider(LiveEventsJson, IncidentsJson);
+        var match = MapFirstEvent(LiveEventsJson, IncidentsJson);
 
-        var result = await provider.GetLiveMatchesAsync(CancellationToken.None);
-
-        result[0].Events.Should().Contain(e =>
+        match!.Events.Should().Contain(e =>
             e.Type == EventType.Goal && e.PlayerName == "Pedro" && e.Minute == 32 && e.Team == "home");
     }
 
     [Fact]
-    public async Task GetLiveMatchesAsync_MapsYellowCard()
+    public void MapMatch_MapsYellowCard()
     {
-        var provider = BuildProvider(LiveEventsJson, IncidentsJson);
+        var match = MapFirstEvent(LiveEventsJson, IncidentsJson);
 
-        var result = await provider.GetLiveMatchesAsync(CancellationToken.None);
-
-        result[0].Events.Should().Contain(e =>
+        match!.Events.Should().Contain(e =>
             e.Type == EventType.YellowCard && e.PlayerName == "Zé Rafael" && e.Team == "away");
     }
 
     [Fact]
-    public async Task GetLiveMatchesAsync_MapsOwnGoal()
+    public void MapMatch_MapsOwnGoal()
     {
-        var provider = BuildProvider(LiveEventsJson, IncidentsJson);
+        var match = MapFirstEvent(LiveEventsJson, IncidentsJson);
 
-        var result = await provider.GetLiveMatchesAsync(CancellationToken.None);
-
-        result[0].Events.Should().Contain(e =>
+        match!.Events.Should().Contain(e =>
             e.Type == EventType.OwnGoal && e.PlayerName == "Murilo");
     }
 
     [Fact]
-    public async Task GetLiveMatchesAsync_MapsHalftimeStatus()
+    public void MapMatch_MapsHalftimeStatus()
     {
-        var provider = BuildProvider(HalfTimeEventsJson, IncidentsJson);
-        var result = await provider.GetLiveMatchesAsync(CancellationToken.None);
-        result[0].Status.Should().Be(MatchStatus.HalfTime);
+        var match = MapFirstEvent(HalfTimeEventsJson, IncidentsJson);
+        match!.Status.Should().Be(MatchStatus.HalfTime);
     }
 
     [Fact]
-    public async Task GetLiveMatchesAsync_MapsFinishedStatus()
+    public void MapMatch_MapsFinishedStatus()
     {
-        var provider = BuildProvider(FinishedEventsJson, IncidentsJson);
-        var result = await provider.GetLiveMatchesAsync(CancellationToken.None);
-        result[0].Status.Should().Be(MatchStatus.Finished);
+        var match = MapFirstEvent(FinishedEventsJson, IncidentsJson);
+        match!.Status.Should().Be(MatchStatus.Finished);
     }
 
-    private static SofaScoreProvider BuildProvider(string liveJson, string incidentsJson)
+    private static NormalizedMatch? MapFirstEvent(string eventsJson, string incidentsJson)
     {
-        var handler = new SequentialStubHandler(new[]
-        {
-            (HttpStatusCode.OK, liveJson),
-            (HttpStatusCode.OK, incidentsJson)
-        });
-        var http = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
-        return new SofaScoreProvider(http, new SofaScoreOptions(), new FuzzyMatchResolver());
-    }
-
-    private sealed class SequentialStubHandler : HttpMessageHandler
-    {
-        private readonly (HttpStatusCode status, string body)[] _responses;
-        private int _index;
-
-        public SequentialStubHandler((HttpStatusCode, string)[] responses) => _responses = responses;
-
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
-        {
-            var (status, body) = _responses[_index++ % _responses.Length];
-            return Task.FromResult(new HttpResponseMessage(status)
-            {
-                Content = new StringContent(body)
-            });
-        }
+        using var doc = JsonDocument.Parse(eventsJson);
+        var ev = doc.RootElement.GetProperty("events")[0];
+        var id = ev.GetProperty("id").GetInt64().ToString();
+        return SofaScoreMapper.MapMatch(ev, incidentsJson, id, new FuzzyMatchResolver());
     }
 }

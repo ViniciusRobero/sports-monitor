@@ -23,7 +23,12 @@ public class InMemorySnapshotStore : ISnapshotStore
             : [];
 
     public IReadOnlyList<string> GetLiveMatchIds() =>
-        _data.Keys.ToList();
+        _data
+            .Where(kv => kv.Value.Values.Any(m =>
+                m.Status == MatchStatus.Live ||
+                m.Status == MatchStatus.HalfTime))
+            .Select(kv => kv.Key)
+            .ToList();
 
     public void RemoveMatch(string matchId) =>
         _data.TryRemove(matchId, out _);

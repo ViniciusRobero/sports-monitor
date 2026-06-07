@@ -1,5 +1,275 @@
 # Session Log
 
+## 2026-06-07 - Real Providers, Frontend UX, and Linux/GCP Deploy Prep
+
+### Goal
+
+Implement the next planned step: enable real providers without paid keys, improve dashboard UX, and prepare deployment to a GCP Compute Engine VM.
+
+### Work Done
+
+- Updated `src/SportsMonitor.Bff/appsettings.json`:
+  - `Demo.Enabled=false`
+  - SofaScore enabled with 30s polling
+  - 365Scores enabled with 20s polling
+  - Google enabled with 300s polling and credential placeholders
+  - ApiFootball and BetsAPI remain disabled
+- Changed `SofaScoreProvider` to fetch incidents sequentially with a 200ms delay between matches to reduce burst/rate-limit risk.
+- Added dashboard filters:
+  - text search by team or competition
+  - HalfTime visibility toggle
+- Added alert UX:
+  - sound on/off toggle
+  - active-alert panel grouped by severity
+  - ignore-all action
+  - active alert logic now excludes Confirmed, FalsePositive, and Ignored statuses
+- Improved mobile layout:
+  - responsive header
+  - stacked alert action buttons on narrow screens
+  - smaller score type on mobile cards
+- Preserved and integrated existing Confirmed / FalsePositive buttons in divergence cards.
+- Added Linux/GCP deployment files:
+  - `publish-linux.sh`
+  - `deploy.sh`
+  - `publish-linux.ps1`
+  - `setup-gcp-vm.ps1`
+  - `deploy-gcp.ps1`
+  - `sportsmonitor.service`
+  - `nginx-sportsmonitor.conf`
+- Recorded the operational requirement that all GCP configuration and deployment must be done via CLI (`gcloud`, SSH, SCP/rsync, and repository scripts), not through the Console web as the primary path.
+- Updated `.gitignore` for `appsettings.Production.json` and `publish-linux/`.
+- Rebuilt Angular production assets into `src/SportsMonitor.Bff/wwwroot`.
+- Updated README, PROJECT_CONTEXT, NEXT_STEPS, DECISIONS, and API_REFERENCE.
+
+### Validation
+
+- `npm run build -- --configuration production` passed without warnings.
+- `dotnet test src\SportsMonitor.slnx` passed: 78 tests.
+- `dotnet publish src\SportsMonitor.Bff\SportsMonitor.Bff.csproj --configuration Release --runtime linux-x64 --self-contained true -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true --output publish-linux` passed.
+- `bash -n publish-linux.sh deploy.sh` could not run because `/bin/bash` is unavailable in this Windows/WSL environment.
+
+### Remaining
+
+- Provide real Google Custom Search API key and Search Engine ID.
+- Provide VM external IP and SSH user.
+- Configure production secrets outside Git.
+- Install/enable systemd and Nginx files on the VM.
+- Run live-match validation during active games.
+- Keep GCP setup and deploy command-line first.
+
+### Files Changed
+
+- `.gitignore`
+- `README.md`
+- `PROJECT_CONTEXT.md`
+- `ai-notes/NEXT_STEPS.md`
+- `ai-notes/SESSION_LOG.md`
+- `ai-notes/DECISIONS.md`
+- `ai-notes/API_REFERENCE.md`
+- `src/SportsMonitor.Bff/appsettings.json`
+- `src/SportsMonitor.Infrastructure/Providers/SofaScoreProvider.cs`
+- `src/SportsMonitor.Web/src/app/alert.service.ts`
+- `src/SportsMonitor.Web/src/app/app.ts`
+- `src/SportsMonitor.Web/src/app/divergence-card.ts`
+- `src/SportsMonitor.Web/src/app/source-match-card.ts`
+- `src/SportsMonitor.Web/src/app/source-panel.ts`
+- `src/SportsMonitor.Web/src/styles.css`
+- `src/SportsMonitor.Bff/wwwroot/*`
+- `publish-linux.sh`
+- `deploy.sh`
+- `publish-linux.ps1`
+- `setup-gcp-vm.ps1`
+- `deploy-gcp.ps1`
+- `sportsmonitor.service`
+- `nginx-sportsmonitor.conf`
+
+### Next Step
+
+Configure production credentials and deploy to the VM.
+
+---
+
+## 2026-06-07 - SofaScore Official External API Check
+
+### Goal
+
+Check the user-provided SofaScore external API docs URL:
+
+`https://api.sofascore.com/api/docs/external#tag/Betting-Odds/operation/get_sofascore_app_external_api_v1_bettingodds_list`
+
+### Work Done
+
+- Tried to open the official external docs through browser/web tooling.
+- Tested docs and likely related endpoints through CLI with browser-like headers.
+- Updated `ai-notes/CREDENTIALS_GUIDE.md`, `ai-notes/SOURCE_RESEARCH_STATUS.md`, and `ai-notes/DECISIONS.md`.
+
+### Findings
+
+- The URL fragment references a `Betting Odds` operation, not directly live score/incidents.
+- `https://api.sofascore.com/api/docs/external` returned HTTP 403 locally.
+- `https://api.sofascore.com/api/docs/external/openapi.json` returned HTTP 403 locally.
+- `https://api.sofascore.com/api/docs/external/swagger.json` returned HTTP 403 locally.
+- Probable no-auth endpoint `https://api.sofascore.com/api/v1/betting-odds/list` returned HTTP 403 locally.
+- Interpretation: the external API/docs appear access-controlled, partner-gated, or blocked from this environment. Do not infer token/header format until the Swagger security scheme or a generated cURL command is available.
+
+### Next Step
+
+If the docs open in the user's browser, capture the Swagger `Authorize` security scheme or generated cURL command, masking secrets. Otherwise, keep SofaScore optional/blocked and rely on 365Scores + Google or a licensed provider for production reliability.
+
+---
+
+## 2026-06-07 - Handoff Persistence Reminder
+
+### Goal
+
+Record the user's reminder that important project information must be persisted because the work may continue across different AI models.
+
+### Work Done
+
+- Added a continuity rule to `PROJECT_CONTEXT.md`.
+- Added the same handoff expectation to `ai-notes/NEXT_STEPS.md`.
+- Recorded a decision in `ai-notes/DECISIONS.md`.
+
+### Decision
+
+Important user-shared information must be stored in repository handoff files before ending work. Do not rely on conversation history alone.
+
+### Next Step
+
+Continue keeping `PROJECT_CONTEXT.md` and `/ai-notes/` synchronized whenever credentials, GCP choices, deployment results, validation findings, or blockers are shared.
+
+---
+
+## 2026-06-07 - Google Credential Recovery Check
+
+### Goal
+
+Determine whether previously shared Google Custom Search credentials were already available locally, so the user would not need to recreate anything manually.
+
+### Work Done
+
+- Searched the repository and local Claude history for Google Custom Search credentials.
+- Found a previously stored `SearchEngineId`: `25c69f98aa10d4ba0`.
+- Found an old Google API key in local Claude history, but did not print or commit it.
+- Generated a temporary `appsettings.Production.json` locally to test the old key.
+- Tested one Custom Search request; Google returned `403 PERMISSION_DENIED` with message: "This project does not have the access to Custom Search JSON API."
+- Removed the temporary `appsettings.Production.json` to avoid deploying an invalid key.
+- Added `setup-google-search-key.ps1` to create a new restricted API key via `gcloud`, enable required APIs, and write a gitignored `appsettings.Production.json`.
+
+### Current Credential Status
+
+- Search Engine ID can be reused: `25c69f98aa10d4ba0`.
+- Old API key should not be reused; create a new key in the selected GCP project via CLI.
+- User still needs to choose/confirm the GCP project because that controls billing/resources.
+
+### Next Step
+
+After user confirms the `ProjectId`, run:
+
+```powershell
+.\setup-google-search-key.ps1 -ProjectId SEU_PROJECT_ID
+.\setup-gcp-vm.ps1 -ProjectId SEU_PROJECT_ID
+.\deploy-gcp.ps1 -ProjectId SEU_PROJECT_ID
+```
+
+---
+
+## 2026-06-07 - Provider Token and Endpoint Check
+
+### Goal
+
+Answer whether SofaScore, 365Scores, and Google tokens/configuration are correct.
+
+### Findings
+
+- SofaScore:
+  - No token is configured or required by the current provider.
+  - Uses `BaseUrl=https://api.sofascore.com` and browser `User-Agent`.
+  - Local HTTP test to `/api/v1/sport/football/events/live` returned `403 Forbidden`, even with browser-like headers.
+  - Interpretation: this is likely endpoint/IP/anti-bot blocking, not missing token.
+- 365Scores:
+  - No token is configured or required by the current provider.
+  - Local `curl.exe` test to `/web/games/?appTypeId=5&langId=31&timezoneName=America%2FSao_Paulo&userCountryId=-1&onlyLive=true` returned HTTP 200 with a large JSON payload.
+- Google:
+  - Requires API key + Search Engine ID.
+  - Search Engine ID found: `25c69f98aa10d4ba0`.
+  - Old API key found in local Claude history failed with `403 PERMISSION_DENIED`: project does not have access to Custom Search JSON API.
+  - Use `setup-google-search-key.ps1` to create a fresh restricted API key in the selected GCP project.
+
+### Next Step
+
+Before production validation, either solve SofaScore 403 with a compliant source/access strategy or rely primarily on 365Scores + Google until SofaScore access is stable.
+
+---
+
+## 2026-06-07 - Release Workflow Requirement
+
+### Goal
+
+Record the user's requirement for a structured release process as GCP deployment matures.
+
+### Work Done
+
+- Created `ai-notes/RELEASE_WORKFLOW.md`.
+- Documented the required sequence: correction -> tests -> code review -> commit -> GCP publication -> production validation -> handoff update.
+- Added references in `PROJECT_CONTEXT.md`, `ai-notes/NEXT_STEPS.md`, and `ai-notes/DECISIONS.md`.
+
+### Decision
+
+As deployment becomes reliable, every production change should use and improve the release workflow document. Any new deploy lesson, command, blocker, or validation result must be saved there or in the relevant handoff docs.
+
+### Next Step
+
+Use `ai-notes/RELEASE_WORKFLOW.md` as the checklist before the first real GCP publication.
+
+---
+
+## 2026-06-07 - Credentials Guide
+
+### Goal
+
+Document how to obtain tokens/keys for SofaScore, 365Scores, and Google if possible.
+
+### Work Done
+
+- Created `ai-notes/CREDENTIALS_GUIDE.md`.
+- Documented that SofaScore and 365Scores do not use tokens in the current implementation.
+- Documented that Google requires API key + Search Engine ID.
+- Recorded that `SearchEngineId=25c69f98aa10d4ba0` is known and the old API key failed with 403.
+- Documented safe boundaries: no cookies, no CAPTCHA bypass, no fingerprint spoofing, no private mobile-token extraction.
+
+### Next Step
+
+After the user chooses a GCP project, create the Google key with `setup-google-search-key.ps1`.
+
+---
+
+## 2026-06-07 - Fastest Possible Data Update Requirement
+
+### Goal
+
+Record and implement the user's requirement that live data should update as fast as realistically possible.
+
+### Work Done
+
+- Updated default provider polling profile:
+  - SofaScore: 10s, if endpoint access works
+  - 365Scores: 10s
+  - Google: remains 300s because it is quota/cost constrained and used for verification snippets
+- Recorded the latency requirement in `PROJECT_CONTEXT.md`, `ai-notes/NEXT_STEPS.md`, `ai-notes/DECISIONS.md`, and `ai-notes/CREDENTIALS_GUIDE.md`.
+
+### Notes
+
+- Faster free-provider polling increases blocking/rate-limit risk.
+- SofaScore currently returns HTTP 403 locally, so faster polling only matters after access is stable.
+- Reliable sub-10s event data likely requires paid/licensed provider validation.
+
+### Next Step
+
+During live-match validation, measure actual end-to-end latency per source and update this requirement with observed values.
+
+---
+
 ## 2026-05-26 - Phase 01 Planning and Handoff Standard
 
 ### Goal

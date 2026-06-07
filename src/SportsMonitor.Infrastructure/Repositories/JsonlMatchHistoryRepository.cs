@@ -34,43 +34,54 @@ public class JsonlMatchHistoryRepository : IMatchHistoryRepository
 
     public async Task UpdateVerificationAsync(Guid divergenceId, VerificationUpdate update, CancellationToken ct)
     {
-        var path = DivergencePath(DateTime.UtcNow);
-        if (!File.Exists(path))
-            return;
-
-        await FileLock.WaitAsync(ct);
-        try
+        var candidateDates = new[]
         {
-            var lines = await File.ReadAllLinesAsync(path, ct);
-            var changed = false;
+            DateTime.UtcNow,
+            DateTime.UtcNow.AddDays(-1),
+            DateTime.UtcNow.AddDays(-2)
+        };
 
-            for (var i = 0; i < lines.Length; i++)
+        foreach (var date in candidateDates)
+        {
+            var path = DivergencePath(date);
+            if (!File.Exists(path))
+                continue;
+
+            await FileLock.WaitAsync(ct);
+            try
             {
-                if (string.IsNullOrWhiteSpace(lines[i]))
-                    continue;
+                var lines = await File.ReadAllLinesAsync(path, ct);
+                var changed = false;
 
-                var divergence = JsonSerializer.Deserialize<Divergence>(lines[i], _jsonOptions);
-                if (divergence is null || divergence.Id != divergenceId)
-                    continue;
-
-                var updated = divergence with
+                for (var i = 0; i < lines.Length; i++)
                 {
-                    VerificationStatus = update.Status,
-                    ReplayLink = update.ReplayLink,
-                    AnalystNotes = update.AnalystNotes
-                };
+                    if (string.IsNullOrWhiteSpace(lines[i]))
+                        continue;
 
-                lines[i] = JsonSerializer.Serialize(updated, _jsonOptions);
-                changed = true;
-                break;
+                    var divergence = JsonSerializer.Deserialize<Divergence>(lines[i], _jsonOptions);
+                    if (divergence is null || divergence.Id != divergenceId)
+                        continue;
+
+                    lines[i] = JsonSerializer.Serialize(divergence with
+                    {
+                        VerificationStatus = update.Status,
+                        ReplayLink = update.ReplayLink,
+                        AnalystNotes = update.AnalystNotes
+                    }, _jsonOptions);
+                    changed = true;
+                    break;
+                }
+
+                if (changed)
+                {
+                    await File.WriteAllLinesAsync(path, lines, ct);
+                    return;
+                }
             }
-
-            if (changed)
-                await File.WriteAllLinesAsync(path, lines, ct);
-        }
-        finally
-        {
-            FileLock.Release();
+            finally
+            {
+                FileLock.Release();
+            }
         }
     }
 

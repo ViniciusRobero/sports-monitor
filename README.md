@@ -8,7 +8,7 @@
 
 Sistema **local, desktop-first** que monitora partidas de futebol ao vivo em múltiplas fontes de dados, detecta divergências em tempo real e alerta o analista com um som ("apito") para que ele verifique manualmente e atue na Bet365.
 
-> **Status:** MVP implementado — 5 provedores, 5 regras de divergência, dashboard Angular, shell WPF, modo demo. 68 testes passando.
+> **Status:** MVP implementado e preparado para provedores reais + deploy Linux/GCP. 5 provedores, 5 regras de divergência, dashboard Angular, shell WPF, modo demo opcional. 78 testes passando.
 
 ---
 
@@ -55,7 +55,7 @@ Máquina do Usuário
 │   ├── BetsApiWorker       (padrão 30s — Bet365 via BetsAPI)
 │   ├── SofaScoreWorker     (padrão 30s — API interna SofaScore)
 │   ├── Scores365Worker     (padrão 20s — API interna 365Scores)
-│   ├── GoogleSearchWorker  (padrão 120s — Custom Search API)
+│   ├── GoogleSearchWorker  (padrão 300s — Custom Search API)
 │   └── AlertWorker         (consome fila de divergências → SignalR)
 │
 ├── In-Memory Snapshot Store   ← dispara SnapshotUpdated a cada atualização
@@ -99,7 +99,7 @@ O Google não expõe dados estruturados de partida, mas seus resultados de busca
 
 A ação manual (abrir replay, confirmar evento) continua sendo feita pelo analista. A **Bet365** é a plataforma onde ele age após confirmar.
 
-> **Limite do free tier:** 100 buscas/dia. Com intervalo de 120s e ~2-3 partidas simultâneas, o free tier é suficiente. Acima disso, o Google cobra $5 por 1.000 buscas adicionais.
+> **Limite do free tier:** 100 buscas/dia. O intervalo padrão foi ajustado para 300s para reduzir consumo durante jogos. Com muitas partidas simultâneas, ainda é necessário monitorar quota. Acima do free tier, o Google cobra por buscas adicionais.
 
 ---
 
@@ -172,7 +172,7 @@ O sistema inclui um **DemoWorker** que injeta dados fictícios a cada 10 segundo
 - **Brasil × Argentina** — jogo sem gols com eventos disciplinares.
 - **Real Madrid × Barcelona** — clássico com gols e cartão.
 
-O mock também popula o painel do Google com snippets e links de busca por partida. Ativo por padrão em `appsettings.json`. Desative com `"Demo": { "Enabled": false }` quando os tokens reais estiverem configurados.
+O mock também popula o painel do Google com snippets e links de busca por partida. O modo demo agora é opcional: ative com `"Demo": { "Enabled": true }` quando quiser apresentação sem provedores reais. Para operação real, mantenha `"Demo": { "Enabled": false }`.
 
 ### Como gerar o pacote para uso sem ambiente de desenvolvimento
 
@@ -184,9 +184,67 @@ Gera a pasta `publish\`. Para enviar ao usuário final, compacte e entregue a pa
 
 ---
 
+### Deploy Linux / GCP Compute Engine
+
+O repositório também inclui artefatos para rodar o BFF como web app em uma VM Linux:
+
+> **Regra operacional:** configuração e deploy no GCP devem ser feitos via linha de comando (`gcloud`, `ssh`, `scp`/`rsync` e scripts do repositório), sem depender do Console web como caminho principal.
+
+| Arquivo | Uso |
+|---|---|
+| `publish-linux.sh` | Build Angular + publish self-contained `linux-x64` em `publish-linux/` |
+| `deploy.sh` | Executa build, envia `publish-linux/` para a VM e reinicia o serviço |
+| `publish-linux.ps1` | Versão PowerShell do build Linux, recomendada no Windows |
+| `setup-google-search-key.ps1` | Habilita Custom Search API, cria API key restrita e gera `appsettings.Production.json` |
+| `setup-gcp-vm.ps1` | Cria/prepara VM, firewall e Nginx via `gcloud` |
+| `deploy-gcp.ps1` | Build + upload + systemd/Nginx + restart via `gcloud compute ssh/scp` |
+| `sportsmonitor.service` | Unit file do systemd para `/opt/sportsmonitor` |
+| `nginx-sportsmonitor.conf` | Reverse proxy HTTP para `localhost:5000` + SignalR |
+
+Uso local esperado:
+
+```powershell
+.\setup-google-search-key.ps1 -ProjectId SEU_PROJECT_ID
+.\setup-gcp-vm.ps1 -ProjectId SEU_PROJECT_ID
+.\deploy-gcp.ps1 -ProjectId SEU_PROJECT_ID
+```
+
+Alternativa via shell Linux:
+
+```bash
+./publish-linux.sh
+
+VM_USER=seu_usuario VM_IP=IP_DA_VM ./deploy.sh
+```
+
+Na VM, configure as credenciais reais em `appsettings.Production.json` ou variáveis de ambiente. Esse arquivo está no `.gitignore` e não deve ser commitado.
+
+Fluxo GCP via CLI:
+
+```bash
+gcloud auth login
+gcloud config set project SEU_PROJECT_ID
+
+gcloud compute instances create sportsmonitor-vm \
+  --zone=southamerica-east1-b \
+  --machine-type=e2-small \
+  --image-family=ubuntu-2204-lts \
+  --image-project=ubuntu-os-cloud \
+  --boot-disk-size=20GB \
+  --tags=http-server,https-server
+
+gcloud compute firewall-rules create allow-sportsmonitor-http \
+  --allow=tcp:80 \
+  --target-tags=http-server
+
+gcloud compute ssh sportsmonitor-vm --zone=southamerica-east1-b
+```
+
+---
+
 ### Configuração (`src/SportsMonitor.Bff/appsettings.json`)
 
-Todos os provedores ficam desabilitados por padrão. Habilite e configure as chaves antes de rodar:
+O `appsettings.json` atual está preparado para operação real sem demo: SofaScore e 365Scores habilitados, Google habilitado com placeholders de credencial, API-Football e BetsAPI desligados. Substitua credenciais em ambiente local/produção antes de rodar:
 
 ```json
 {
@@ -211,7 +269,7 @@ Todos os provedores ficam desabilitados por padrão. Habilite e configure as cha
     },
     "Google": {
       "Enabled": true,
-      "PollingIntervalSeconds": 120,
+      "PollingIntervalSeconds": 300,
       "ApiKey": "SUA_CHAVE_GOOGLE",
       "SearchEngineId": "SEU_CX_ID",
       "ResultsPerMatch": 3
@@ -238,7 +296,7 @@ src/
 ├── SportsMonitor.Bff/             # Host ASP.NET Core — REST API + SignalR hub
 ├── SportsMonitor.Web/             # Dashboard Angular 21
 ├── SportsMonitor.Desktop/         # Shell WPF + WebView2
-└── SportsMonitor.Tests/           # 68 testes xUnit
+└── SportsMonitor.Tests/           # 78 testes xUnit
 ```
 
 ---
@@ -270,7 +328,7 @@ src/
 
 A **local-first, desktop-first** system that monitors live football/soccer matches across multiple data sources, detects divergences in real time, and alerts the analyst with an audible sound so they can manually verify and act on Bet365.
 
-> **Status:** MVP implemented — 5 providers, 5 divergence rules, Angular dashboard, WPF shell, demo mode. 68 tests passing.
+> **Status:** MVP implemented and prepared for real providers + Linux/GCP deployment. 5 providers, 5 divergence rules, Angular dashboard, WPF shell, optional demo mode. 78 tests passing.
 
 ---
 
@@ -317,7 +375,7 @@ User Machine
 │   ├── BetsApiWorker       (default 30s — Bet365 via BetsAPI)
 │   ├── SofaScoreWorker     (default 30s — SofaScore internal API)
 │   ├── Scores365Worker     (default 20s — 365Scores internal API)
-│   ├── GoogleSearchWorker  (default 120s — Custom Search API)
+│   ├── GoogleSearchWorker  (default 300s — Custom Search API)
 │   └── AlertWorker         (consumes divergence queue → SignalR)
 │
 ├── In-Memory Snapshot Store   ← fires SnapshotUpdated on every update
@@ -344,7 +402,7 @@ User Machine
 
 Google does not expose structured match data, but its search snippets serve as an **integrated verification panel**: for each live match, the system automatically fetches the top 3 results and displays them inside each divergence card. The analyst sees title, snippet and link — without leaving the dashboard.
 
-> **Free tier limit:** 100 searches/day. At 120s interval with ~2-3 simultaneous matches, the free tier is sufficient. Beyond that, Google charges $5 per 1,000 additional searches.
+> **Free tier limit:** 100 searches/day. The default interval is now 300s to reduce usage during live matches. With many simultaneous matches, quota still needs monitoring.
 
 ### Divergence rules
 

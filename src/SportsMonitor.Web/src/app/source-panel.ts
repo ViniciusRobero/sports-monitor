@@ -67,7 +67,10 @@ export class SourcePanel {
   meta = computed(() => SOURCE_META[this.source()] ?? { label: this.source(), icon: '📌' });
 
   alertCount = computed(() =>
-    this.divergences().filter(d => d.verificationStatus !== 'Ignored').length
+    this.divergences().filter(d =>
+      this.alerts.isActive(d) &&
+      (d.sourceA === this.source() || d.sourceB === this.source())
+    ).length
   );
 
   divForSnap(snap: MatchSnapshot): Divergence[] {

@@ -14,6 +14,8 @@ FIFA World Cup 2026 is a very high-priority competition and must be explicitly i
 
 AI handoff is mandatory. `PROJECT_CONTEXT.md` and `/ai-notes/` files must be kept updated so any AI model can continue the work without losing context.
 
+Important continuity rule: because this project may move between different AI models/agents, any important information shared by the user during a session must be stored in repository handoff files before ending the turn. Do not rely on chat memory alone. At minimum, update `PROJECT_CONTEXT.md` and the relevant files under `/ai-notes/`.
+
 ---
 
 ## 2. Current Phase
@@ -23,22 +25,38 @@ AI handoff is mandatory. `PROJECT_CONTEXT.md` and `/ai-notes/` files must be kep
 
 **Phase 04 — MVP Implementation: COMPLETE**
 **Phase 08 — Local Packaging: COMPLETE**
+**Phase 09 — Real Providers + Linux Deploy Prep: IMPLEMENTED / MANUAL VALIDATION PENDING**
 
-### O que está implementado (2026-05-29)
+### O que está implementado (2026-06-07)
 
 - Domain, Application, Infrastructure completos
 - 5 providers: SofaScore, 365Scores, ApiFootball, BetsAPI, Google Custom Search
 - 5 regras de divergência: ScoreMismatch, GoalScorerMismatch, MissingGoal, CardMismatch, MatchStatusMismatch
-- DemoWorker: modo demo rico sem API keys, com Bet365 e Google como fontes principais, 5 partidas mockadas, divergência rápida de resultado em ~5s e Flamengo x Palmeiras avançando em fases a cada 10s
+- DemoWorker: modo demo rico sem API keys, com Bet365 e Google como fontes principais, 5 partidas mockadas, divergência rápida de resultado em ~5s e Flamengo x Palmeiras avançando em fases a cada 10s. Demo agora é opcional; operação real usa `Demo.Enabled: false`
 - WPF + WebView2 shell com wait-for-ready e logging em arquivo
-- Dashboard Angular com botão de refresh manual, painéis por fonte, Google na segunda coluna e scroll habilitado no grid
+- Dashboard Angular com botão de refresh manual, painéis por fonte, Google na segunda coluna, filtros por texto/status, painel global de alertas, toggle de som, "Ignorar todos" e layout mobile melhorado
 - publish.ps1: pacote single-exe para Windows
-- 68 testes passando
+- `publish-linux.sh`, `deploy.sh`, `sportsmonitor.service` e `nginx-sportsmonitor.conf` para deploy Linux/GCP
+- `publish-linux.ps1`, `setup-gcp-vm.ps1` e `deploy-gcp.ps1` para fluxo GCP via CLI no Windows sem depender de WSL/rsync
+- `setup-google-search-key.ps1` para habilitar Custom Search API, criar API key restrita e gerar `appsettings.Production.json` gitignored via CLI
+- SofaScore/365Scores habilitados; Google habilitado com intervalo 300s e placeholders de credencial
+- Delay sequencial de 200ms no SofaScore incidents para reduzir risco de rate limit
+- 78 testes passando
 
 ### Pendências
-- API-Football key ($19/mês — api-sports.io)
-- BetsAPI token (pago — betsapi.com) + validar campo LA com payload real
-- Desabilitar Demo.Enabled quando tokens reais estiverem configurados
+- Criar/fornecer Google Custom Search API key e Search Engine ID reais
+- Search Engine ID recuperado de histórico local: `25c69f98aa10d4ba0`. API key antiga encontrada no histórico falhou com 403; criar nova key via `setup-google-search-key.ps1` no projeto GCP escolhido.
+- Provider token/status check em 2026-06-07:
+  - SofaScore external API docs check em 2026-06-07: usuario compartilhou `https://api.sofascore.com/api/docs/external#tag/Betting-Odds/operation/get_sofascore_app_external_api_v1_bettingodds_list`. A documentacao externa, `openapi.json`, `swagger.json` e o provavel endpoint `https://api.sofascore.com/api/v1/betting-odds/list` retornaram HTTP 403 via CLI. A operacao citada e de Betting Odds, nao de placar/incidentes ao vivo. Nao assumir formato de token/header ate obter o Swagger `Authorize` ou um cURL gerado pela documentacao.
+  - SofaScore não usa token no código, mas o endpoint `https://api.sofascore.com/api/v1/sport/football/events/live` retornou HTTP 403 nos testes locais mesmo com headers de navegador. Isso indica bloqueio/anti-bot/IP, não falta de token.
+  - 365Scores não usa token e respondeu HTTP 200 via `curl.exe` no endpoint `/web/games/?...&onlyLive=true`.
+  - Google usa API key + Search Engine ID. `SearchEngineId=25c69f98aa10d4ba0` está disponível; API key antiga falhou com 403 e deve ser recriada via CLI.
+- Latency requirement em 2026-06-07: usuário quer atualização dos dados no tempo mais rápido possível. Perfil agressivo atual: 365Scores 10s, SofaScore 10s se o acesso funcionar, Google 300s por quota/custo. Google é fonte de verificação, não placar estruturado de baixa latência. Para sub-10s confiável, avaliar fonte paga/licenciada.
+- Criar VM no Compute Engine via CLI (`gcloud compute instances create`), instalar runtime/infra e configurar systemd + Nginx via SSH
+- Criar `appsettings.Production.json` na VM ou variáveis de ambiente com credenciais reais via linha de comando
+- Validar em horário com partidas ao vivo se SofaScore e 365Scores agrupam corretamente via `FuzzyMatchResolver`
+- Validar real BetsAPI payloads, especialmente campo `LA`, se/ quando BetsAPI entrar no escopo
+- API-Football key ($19/mês — api-sports.io), se a fonte oficial/comercial for habilitada
 
 ---
 
@@ -92,6 +110,8 @@ If official source is delayed/missing/inconsistent: divergence is marked for man
 
 **SofaScore:** `GET https://api.sofascore.com/api/v1/sport/football/events/live` + `/event/{id}/incidents`. User-Agent browser + 25-30s polling. Sem auth.
 
+**SofaScore External API:** official docs URL shared by user points to a Betting Odds operation, but local CLI tests returned HTTP 403 for docs/openapi/swagger and probable betting odds list endpoint. Treat formal external access as pending/partner-gated until the Swagger auth scheme or generated cURL command is available.
+
 **365Scores:** `GET https://webws.365scores.com/web/game/?appTypeId=5&langId=31&timezoneName=America/Sao_Paulo&userCountryId=-1&gameId={id}`. Sem auth.
 
 **Google:** Não há endpoint público de live score estruturado. O MVP usa Google Custom Search JSON API para snippets/links de verificação, e o modo demo injeta resultados mockados por partida.
@@ -133,6 +153,8 @@ Optional LAN: http://192.168.x.x:5000
 | `/ai-notes/NEXT_STEPS.md` | Immediate next tasks |
 | `/ai-notes/DECISIONS.md` | Technical and product decisions already made |
 | `/ai-notes/SOURCE_RESEARCH_STATUS.md` | Status by source/provider/bookmaker |
+| `/ai-notes/RELEASE_WORKFLOW.md` | Required correction -> tests -> code review -> commit -> GCP publication workflow |
+| `/ai-notes/CREDENTIALS_GUIDE.md` | How to obtain/confirm provider credentials and what does not require tokens |
 
 ---
 
@@ -223,10 +245,50 @@ Full list in `PHASE_02_PLUS_PLANNING_UPDATE.md` section 8.
 | 06 | Divergence Engine | **COMPLETE** |
 | 07 | Dashboard and Manual Verification | **MVP COMPLETE** |
 | 08 | Local Packaging and Handoff | **COMPLETE** |
+| 09 | Real Providers, Frontend UX, Linux/GCP Deploy Prep | **IMPLEMENTED - MANUAL VALIDATION PENDING** |
 
 ---
 
 ## 14. Last Session Summary
+
+Date: 2026-06-07
+
+Summary:
+- Enabled real-provider configuration path: Demo off, SofaScore on, 365Scores on, Google on with 300s polling and credential placeholders.
+- Added sequential 200ms delay between SofaScore incident calls.
+- Improved Angular dashboard with text filtering, HalfTime toggle, sound toggle, active-alert panel, ignore-all action, source-specific alert counts, Google verification column derived from live matches, and mobile layout fixes.
+- Preserved existing Confirmed/FalsePositive card actions and aligned "active alert" logic to exclude Confirmed, FalsePositive, and Ignored divergences.
+- Added Linux/GCP deploy artifacts: `publish-linux.sh`, `deploy.sh`, `sportsmonitor.service`, `nginx-sportsmonitor.conf`.
+- Updated `.gitignore` for `appsettings.Production.json` and `publish-linux/`.
+- Rebuilt Angular static assets into `src/SportsMonitor.Bff/wwwroot`.
+- Validated Angular production build and Linux publish.
+- Test status: `dotnet test src\SportsMonitor.slnx` => 78 passed.
+
+Files changed:
+- `.gitignore`
+- `src/SportsMonitor.Bff/appsettings.json`
+- `src/SportsMonitor.Infrastructure/Providers/SofaScoreProvider.cs`
+- `src/SportsMonitor.Web/src/app/*`
+- `src/SportsMonitor.Web/src/styles.css`
+- `src/SportsMonitor.Bff/wwwroot/*`
+- `publish-linux.sh`
+- `deploy.sh`
+- `publish-linux.ps1`
+- `setup-gcp-vm.ps1`
+- `deploy-gcp.ps1`
+- `sportsmonitor.service`
+- `nginx-sportsmonitor.conf`
+- `README.md`
+- `PROJECT_CONTEXT.md`
+- `ai-notes/*`
+
+Remaining:
+- Provide real Google credentials and VM information.
+- Configure production secrets outside Git.
+- Run real-provider smoke test during live matches.
+- Deploy to VM and verify systemd/Nginx startup using CLI-only workflow (`gcloud`, `ssh`, `scp`/`rsync`, repo scripts).
+
+---
 
 Date: 2026-05-29
 
@@ -293,7 +355,10 @@ Before doing any work:
 2. Read `PHASE_02_PLUS_PLANNING_UPDATE.md` for the full operational requirements, workflow, and phase planning.
 3. Read `PHASE_01_RESEARCH_RESULTS.md` for source research results.
 4. Check `/ai-notes/NEXT_STEPS.md` for immediate tasks.
-5. MVP and local packaging are complete; next work should focus on real credential validation, clean-machine smoke testing, and source hardening.
+5. MVP, local packaging, real-provider configuration, frontend UX updates, and Linux/GCP deploy prep are implemented; next work should focus on real credentials, VM deploy, live-match validation, and source hardening.
 6. The app is desktop-first (.NET, WPF/WinForms + WebView2), but architecturally web-migratable.
 7. No automated betting — ever.
-8. Update this file before ending the session.
+8. GCP configuration and deployment must be done via command line, not via Console web as the primary path.
+9. Production changes should follow the documented release flow: correction -> tests -> code review -> commit -> GCP publication -> validation -> handoff update.
+10. Store important user-shared information in repository handoff files whenever models/agents may change; do not rely only on conversation history.
+11. Update this file before ending the session.

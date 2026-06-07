@@ -90,12 +90,7 @@ builder.Services.AddHttpClient<BetsApiProvider>((sp, client) =>
 builder.Services.AddSingleton(sp =>
     sp.GetRequiredService<IOptionsMonitor<BetsApiOptions>>().CurrentValue);
 
-builder.Services.AddHttpClient<SofaScoreProvider>((sp, client) =>
-{
-    var options = sp.GetRequiredService<IOptionsMonitor<SofaScoreOptions>>().CurrentValue;
-    client.BaseAddress = new Uri(options.BaseUrl);
-    client.DefaultRequestHeaders.Add("User-Agent", options.UserAgent);
-});
+builder.Services.AddSingleton<SofaScoreProvider>();
 builder.Services.AddSingleton(sp =>
     sp.GetRequiredService<IOptionsMonitor<SofaScoreOptions>>().CurrentValue);
 

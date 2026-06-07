@@ -1,3 +1,4 @@
+using System.Text.Json;
 using FluentAssertions;
 using SportsMonitor.Domain.Models;
 using SportsMonitor.Infrastructure.Repositories;
@@ -104,5 +105,51 @@ public class JsonlMatchHistoryRepositoryTests : IDisposable
             CancellationToken.None);
 
         await act.Should().NotThrowAsync();
+    }
+
+    [Fact]
+    public async Task UpdateVerificationAsync_FindsDivergenceFromYesterday()
+    {
+        var yesterday = DateTime.UtcNow.AddDays(-1);
+        var divergence = DivergenceBuilder.Create().WithDetectedAt(yesterday).Build();
+        await _repo.SaveDivergenceAsync(divergence, CancellationToken.None);
+
+        var update = new VerificationUpdate(VerificationStatus.Confirmed, null, "found yesterday", null);
+        await _repo.UpdateVerificationAsync(divergence.Id, update, CancellationToken.None);
+
+        var updated = await ReadDivergenceFromFile(yesterday, divergence.Id);
+        updated.Should().NotBeNull();
+        updated!.VerificationStatus.Should().Be(VerificationStatus.Confirmed);
+        updated.AnalystNotes.Should().Be("found yesterday");
+    }
+
+    [Fact]
+    public async Task UpdateVerificationAsync_FindsDivergenceFrom2DaysAgo()
+    {
+        var twoDaysAgo = DateTime.UtcNow.AddDays(-2);
+        var divergence = DivergenceBuilder.Create().WithDetectedAt(twoDaysAgo).Build();
+        await _repo.SaveDivergenceAsync(divergence, CancellationToken.None);
+
+        var update = new VerificationUpdate(VerificationStatus.FalsePositive, null, null, null);
+        await _repo.UpdateVerificationAsync(divergence.Id, update, CancellationToken.None);
+
+        var updated = await ReadDivergenceFromFile(twoDaysAgo, divergence.Id);
+        updated.Should().NotBeNull();
+        updated!.VerificationStatus.Should().Be(VerificationStatus.FalsePositive);
+    }
+
+    private async Task<Divergence?> ReadDivergenceFromFile(DateTime date, Guid id)
+    {
+        var path = Path.Combine(_basePath, date.ToUniversalTime().ToString("yyyy-MM-dd"), "divergences.jsonl");
+        if (!File.Exists(path)) return null;
+
+        var opts = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+        foreach (var line in await File.ReadAllLinesAsync(path))
+        {
+            if (string.IsNullOrWhiteSpace(line)) continue;
+            var d = JsonSerializer.Deserialize<Divergence>(line, opts);
+            if (d?.Id == id) return d;
+        }
+        return null;
     }
 }

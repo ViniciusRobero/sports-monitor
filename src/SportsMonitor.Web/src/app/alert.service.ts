@@ -9,6 +9,7 @@ export class AlertService {
   readonly liveMatches = signal<LiveMatchGroup[]>([]);
   readonly googleSnapshots = signal<GoogleSearchSnapshot[]>([]);
   readonly connected = signal(false);
+  readonly soundEnabled = signal(true);
 
   private googlePollTimer?: ReturnType<typeof setInterval>;
   private matchPollTimer?: ReturnType<typeof setInterval>;
@@ -56,7 +57,7 @@ export class AlertService {
   divergencesForSourceAndMatch(source: string, matchId: string): Divergence[] {
     return this.divergences().filter(
       d => d.matchId === matchId &&
-           !['Ignored'].includes(d.verificationStatus) &&
+           this.isActive(d) &&
            (d.sourceA === source || d.sourceB === source)
     );
   }
@@ -80,6 +81,21 @@ export class AlertService {
     this.verify(id, { status: 'Ignored', replayLink: null, analystNotes: null, manualActionStatus: null });
   }
 
+  ignoreAll(): Promise<void[]> {
+    const pending = this.divergences().filter(d => this.isActive(d));
+    return Promise.all(pending.map(d =>
+      this.verify(d.id, { status: 'Ignored', replayLink: null, analystNotes: null, manualActionStatus: null })
+    ));
+  }
+
+  toggleSound(): void {
+    this.soundEnabled.update(enabled => !enabled);
+  }
+
+  isActive(d: Divergence): boolean {
+    return !['Confirmed', 'FalsePositive', 'Ignored'].includes(d.verificationStatus);
+  }
+
   private fetchGoogleResults(): void {
     this.http.get<GoogleSearchSnapshot[]>('/api/google-results').subscribe({
       next: snaps => this.googleSnapshots.set(snaps),
@@ -99,6 +115,8 @@ export class AlertService {
   }
 
   private playAlert(): void {
+    if (!this.soundEnabled()) return;
+
     const ctx = new AudioContext();
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();

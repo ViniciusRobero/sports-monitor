@@ -52,7 +52,11 @@ import { AlertService } from './alert.service';
             <span class="sep">≠</span>
             <span class="val-b">{{ labelSource(d.sourceB) }}: {{ d.sourceBValue }}</span>
           </div>
-          <button class="btn-ignore" (click)="ignore(d.id)">Ignorar</button>
+          <div class="btn-group">
+            <button class="btn-confirm" (click)="confirm(d.id)">Confirmar</button>
+            <button class="btn-false-pos" (click)="falsePositive(d.id)">Falso Positivo</button>
+            <button class="btn-ignore" (click)="ignore(d.id)">Ignorar</button>
+          </div>
         </div>
       }
 
@@ -92,8 +96,21 @@ import { AlertService } from './alert.service';
     .alert-values { font-size: 11px; color: #a6adc8; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
     .val-a, .val-b { color: #cdd6f4; }
     .sep { color: #f38ba8; font-weight: bold; }
-    .btn-ignore { align-self: flex-end; padding: 3px 10px; background: #313244; border: 1px solid #45475a; color: #6c7086; border-radius: 4px; cursor: pointer; font-size: 11px; margin-top: 2px; }
+    .btn-group { display: flex; gap: 5px; align-self: flex-end; margin-top: 2px; }
+    .btn-confirm { padding: 3px 10px; background: #1e3a2f; border: 1px solid #a6e3a1; color: #a6e3a1; border-radius: 4px; cursor: pointer; font-size: 11px; }
+    .btn-confirm:hover { background: #2a4f40; }
+    .btn-false-pos { padding: 3px 10px; background: #3a3020; border: 1px solid #f9e2af; color: #f9e2af; border-radius: 4px; cursor: pointer; font-size: 11px; }
+    .btn-false-pos:hover { background: #4a3e28; }
+    .btn-ignore { padding: 3px 10px; background: #313244; border: 1px solid #45475a; color: #6c7086; border-radius: 4px; cursor: pointer; font-size: 11px; }
     .btn-ignore:hover { background: #45475a; color: #cdd6f4; }
+    @media (max-width: 520px) {
+      .smc-header { align-items: flex-start; gap: 8px; }
+      .teams { line-height: 1.25; }
+      .score-home, .score-away { font-size: 22px; }
+      .score-sep { font-size: 17px; }
+      .btn-group { align-self: stretch; flex-direction: column; }
+      .btn-group button { width: 100%; min-height: 30px; }
+    }
   `]
 })
 export class SourceMatchCard {
@@ -105,7 +122,7 @@ export class SourceMatchCard {
   constructor(private alerts: AlertService) {}
 
   activeDivergences = computed(() =>
-    this.divergences().filter(d => d.verificationStatus !== 'Ignored')
+    this.divergences().filter(d => this.alerts.isActive(d))
   );
 
   keyEvents = computed(() =>
@@ -139,10 +156,20 @@ export class SourceMatchCard {
   }
 
   labelSource(s: string): string {
-    return ({ sofascore: 'SofaScore', bet365: 'Bet365', api_football: 'API Football', '365scores': '365Scores' } as any)[s] ?? s;
+    return ({ sofascore: 'SofaScore', bet365: 'Bet365', api_football: 'API Football', '365scores': '365Scores', google: 'Google' } as any)[s] ?? s;
   }
 
   ignore(id: string): void {
     this.alerts.ignoreDivergence(id);
+  }
+
+  confirm(id: string): void {
+    this.alerts.verify(id, { status: 'Confirmed', replayLink: null, analystNotes: null, manualActionStatus: null })
+      .catch(console.error);
+  }
+
+  falsePositive(id: string): void {
+    this.alerts.verify(id, { status: 'FalsePositive', replayLink: null, analystNotes: null, manualActionStatus: null })
+      .catch(console.error);
   }
 }

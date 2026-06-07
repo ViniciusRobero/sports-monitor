@@ -57,12 +57,46 @@ public class InMemorySnapshotStoreTests
     }
 
     [Fact]
-    public void GetLiveMatchIds_ReturnsAllMatchIds()
+    public void GetLiveMatchIds_ReturnsOnlyActiveMatches()
     {
-        _store.Upsert(MatchBuilder.Create().WithMatchId("m1").WithSource("sofascore").Build());
-        _store.Upsert(MatchBuilder.Create().WithMatchId("m2").WithSource("sofascore").Build());
+        _store.Upsert(MatchBuilder.Create().WithMatchId("m1").WithSource("sofascore").Build()); // Live (default)
+        _store.Upsert(MatchBuilder.Create().WithMatchId("m2").WithSource("sofascore").WithStatus(MatchStatus.Finished).Build());
 
-        _store.GetLiveMatchIds().Should().BeEquivalentTo(["m1", "m2"]);
+        _store.GetLiveMatchIds().Should().BeEquivalentTo(["m1"]);
+    }
+
+    [Fact]
+    public void GetLiveMatchIds_ExcludesFinishedMatches()
+    {
+        _store.Upsert(MatchBuilder.Create().WithMatchId("m1").WithSource("sofascore").WithStatus(MatchStatus.Finished).Build());
+
+        _store.GetLiveMatchIds().Should().BeEmpty();
+    }
+
+    [Fact]
+    public void GetLiveMatchIds_ExcludesPostponedAndCancelled()
+    {
+        _store.Upsert(MatchBuilder.Create().WithMatchId("m1").WithSource("sofascore").WithStatus(MatchStatus.Postponed).Build());
+        _store.Upsert(MatchBuilder.Create().WithMatchId("m2").WithSource("sofascore").WithStatus(MatchStatus.Cancelled).Build());
+
+        _store.GetLiveMatchIds().Should().BeEmpty();
+    }
+
+    [Fact]
+    public void GetLiveMatchIds_IncludesHalfTimeMatches()
+    {
+        _store.Upsert(MatchBuilder.Create().WithMatchId("m1").WithSource("sofascore").WithStatus(MatchStatus.HalfTime).Build());
+
+        _store.GetLiveMatchIds().Should().BeEquivalentTo(["m1"]);
+    }
+
+    [Fact]
+    public void GetLiveMatchIds_WhenOnlyOneSourceIsLive_IncludesMatch()
+    {
+        _store.Upsert(MatchBuilder.Create().WithMatchId("m1").WithSource("sofascore").WithStatus(MatchStatus.Finished).Build());
+        _store.Upsert(MatchBuilder.Create().WithMatchId("m1").WithSource("bet365").WithStatus(MatchStatus.Live).Build());
+
+        _store.GetLiveMatchIds().Should().BeEquivalentTo(["m1"]);
     }
 
     [Fact]

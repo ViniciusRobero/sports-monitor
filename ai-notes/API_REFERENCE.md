@@ -9,6 +9,7 @@ Status por fonte, estrutura JSON real, campos mapeados e pendências.
 **Status:** ✅ Implementado e validado contra estrutura real  
 **Custo:** Grátis (API interna não-oficial)  
 **Auth:** Nenhuma. Apenas `User-Agent` de browser no header.
+**Polling atual:** 30s, com delay sequencial de 200ms entre chamadas de incidents.
 
 ### Endpoints usados
 
@@ -435,7 +436,7 @@ Sites indexados no mecanismo (`cx: 25c69f98aa10d4ba0`):
 ```json
 "Google": {
   "Enabled": true,
-  "PollingIntervalSeconds": 120,
+  "PollingIntervalSeconds": 300,
   "ApiKey": "SUA_API_KEY",
   "SearchEngineId": "SEU_CX",
   "ResultsPerMatch": 3
