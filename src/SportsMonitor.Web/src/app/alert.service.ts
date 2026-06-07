@@ -1,13 +1,14 @@
 import { Injectable, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import * as signalR from '@microsoft/signalr';
-import { Divergence, GoogleSearchSnapshot, LiveMatchGroup, MatchSnapshot, VerificationUpdate } from './models';
+import { Divergence, GoogleSearchSnapshot, LiveMatchGroup, MatchSnapshot, VerificationUpdate, ProviderStatus } from './models';
 
 @Injectable({ providedIn: 'root' })
 export class AlertService {
   readonly divergences = signal<Divergence[]>([]);
   readonly liveMatches = signal<LiveMatchGroup[]>([]);
   readonly googleSnapshots = signal<GoogleSearchSnapshot[]>([]);
+  readonly providerStatuses = signal<ProviderStatus[]>([]);
   readonly connected = signal(false);
   readonly soundEnabled = signal(true);
 
@@ -37,7 +38,11 @@ export class AlertService {
     this.connected.set(true);
 
     this.fetchMatches();
-    this.matchPollTimer = setInterval(() => this.fetchMatches(), 20_000);
+    this.fetchProviderStatuses();
+    this.matchPollTimer = setInterval(() => {
+      this.fetchMatches();
+      this.fetchProviderStatuses();
+    }, 20_000);
 
     this.fetchGoogleResults();
     this.googlePollTimer = setInterval(() => this.fetchGoogleResults(), 120_000);
@@ -46,6 +51,13 @@ export class AlertService {
   fetchMatches(): void {
     this.http.get<LiveMatchGroup[]>('/api/matches/live').subscribe({
       next: groups => this.liveMatches.set(groups),
+      error: () => {}
+    });
+  }
+
+  fetchProviderStatuses(): void {
+    this.http.get<ProviderStatus[]>('/api/providers/status').subscribe({
+      next: statuses => this.providerStatuses.set(statuses),
       error: () => {}
     });
   }

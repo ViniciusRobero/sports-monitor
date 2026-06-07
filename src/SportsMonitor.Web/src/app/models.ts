@@ -64,3 +64,16 @@ export interface VerificationUpdate {
   analystNotes: string | null;
   manualActionStatus: string | null;
 }
+
+export type ProviderHealth = 'Healthy' | 'Degraded' | 'Down';
+
+export interface ProviderStatus {
+  name: string;
+  enabled: boolean;
+  health: ProviderHealth;
+  consecutiveFailures: number;
+  totalCollected: number;
+  lastSuccessUtc: string | null;
+  lastFailureUtc: string | null;
+  lastError: string | null;
+}

@@ -24,7 +24,28 @@ const SEVERITY_ORDER: Severity[] = ['Critical', 'High', 'Medium', 'Low'];
         }
       </div>
 
+      <div class="provider-status-bar">
+        @for (status of alerts.providerStatuses(); track status.name) {
+          <div class="provider-badge" [class]="status.health" [title]="status.lastError || ''">
+            <span class="provider-name">{{ status.name }}</span>
+            <span class="provider-time">{{ formatTime(status.lastSuccessUtc) }}</span>
+            @if (status.consecutiveFailures > 0) {
+              <span class="provider-fails">({{ status.consecutiveFailures }} falhas)</span>
+            }
+          </div>
+        }
+      </div>
+
       <div class="filters">
+        <select 
+          class="search competition-select" 
+          [value]="selectedCompetition()" 
+          (change)="selectedCompetition.set($any($event.target).value)">
+          <option value="">Todas as competições</option>
+          @for (comp of competitions(); track comp) {
+            <option [value]="comp">{{ comp }}</option>
+          }
+        </select>
         <input
           class="search"
           type="search"
@@ -117,6 +138,15 @@ const SEVERITY_ORDER: Severity[] = ['Critical', 'High', 'Medium', 'Low'];
     .alert-count { font-size: 12px; color: #f38ba8; font-weight: 600; }
     .result-count { font-size: 12px; color: #6c7086; }
     .search { width: min(260px, 38vw); min-width: 180px; height: 30px; padding: 0 10px; background: #181825; border: 1px solid #313244; color: #cdd6f4; border-radius: 4px; font-size: 12px; outline: none; }
+    .competition-select { width: auto; min-width: 150px; cursor: pointer; }
+    .provider-status-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-left: 10px; }
+    .provider-badge { display: flex; align-items: center; gap: 4px; font-size: 11px; padding: 3px 8px; border-radius: 4px; background: #313244; color: #cdd6f4; border: 1px solid #45475a; }
+    .provider-badge.Healthy { border-color: #a6e3a1; }
+    .provider-badge.Degraded { border-color: #fab387; color: #fab387; }
+    .provider-badge.Down { border-color: #f38ba8; color: #f38ba8; }
+    .provider-name { font-weight: 600; }
+    .provider-time { color: #a6adc8; font-size: 10px; }
+    .provider-fails { font-weight: 600; }
     .btn-refresh, .btn-ghost, .btn-icon { height: 30px; background: #313244; border: 1px solid #45475a; color: #cdd6f4; border-radius: 4px; cursor: pointer; font-size: 12px; }
     .btn-refresh { padding: 4px 12px; }
     .btn-refresh:disabled { opacity: 0.5; cursor: default; }
@@ -173,6 +203,7 @@ const SEVERITY_ORDER: Severity[] = ['Critical', 'High', 'Medium', 'Low'];
 export class App implements OnInit {
   refreshing = signal(false);
   searchText = signal('');
+  selectedCompetition = signal('');
   showHalfTime = signal(true);
   alertsPanelOpen = signal(true);
 
@@ -185,6 +216,16 @@ export class App implements OnInit {
   });
 
   totalMatches = computed(() => this.alerts.liveMatches().length);
+
+  competitions = computed(() => {
+    const comps = new Set<string>();
+    for (const group of this.alerts.liveMatches()) {
+      for (const snap of group) {
+        if (snap.competition) comps.add(snap.competition);
+      }
+    }
+    return Array.from(comps).sort();
+  });
 
   filteredMatchCount = computed(() => {
     const ids = new Set<string>();
@@ -249,6 +290,12 @@ export class App implements OnInit {
     } as Record<string, string>)[t] ?? t;
   }
 
+  formatTime(utcString: string | null): string {
+    if (!utcString) return 'Nunca';
+    const d = new Date(utcString);
+    return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  }
+
   labelSource(s: string): string {
     return ({
       sofascore: 'SofaScore',
@@ -270,14 +317,16 @@ export class App implements OnInit {
 
   private filterSnapshots(snapshots: MatchSnapshot[]): MatchSnapshot[] {
     const text = this.searchText().trim().toLowerCase();
+    const compFilter = this.selectedCompetition();
 
     return snapshots.filter(snap => {
       const matchesText = !text ||
         snap.homeTeam.toLowerCase().includes(text) ||
         snap.awayTeam.toLowerCase().includes(text) ||
         snap.competition.toLowerCase().includes(text);
+      const matchesComp = !compFilter || snap.competition === compFilter;
       const matchesStatus = this.showHalfTime() || snap.status !== 'HalfTime';
-      return matchesText && matchesStatus;
+      return matchesText && matchesComp && matchesStatus;
     });
   }
 }

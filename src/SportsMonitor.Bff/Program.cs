@@ -4,6 +4,7 @@ using Microsoft.Extensions.Options;
 using SportsMonitor.Application;
 using SportsMonitor.Application.Rules;
 using SportsMonitor.Workers;
+using SportsMonitor.Workers.Base;
 using SportsMonitor.Bff.Alerts;
 using SportsMonitor.Bff.Hubs;
 using SportsMonitor.Domain.Configuration;
@@ -71,6 +72,10 @@ builder.Services.AddSingleton<IRefreshable>(sp => sp.GetRequiredService<ApiFootb
 builder.Services.AddSingleton<IRefreshable>(sp => sp.GetRequiredService<BetsApiWorker>());
 builder.Services.AddSingleton<IRefreshable>(sp => sp.GetRequiredService<SofaScoreWorker>());
 builder.Services.AddSingleton<IRefreshable>(sp => sp.GetRequiredService<Scores365Worker>());
+builder.Services.AddSingleton<PollingWorker>(sp => sp.GetRequiredService<ApiFootballWorker>());
+builder.Services.AddSingleton<PollingWorker>(sp => sp.GetRequiredService<BetsApiWorker>());
+builder.Services.AddSingleton<PollingWorker>(sp => sp.GetRequiredService<SofaScoreWorker>());
+builder.Services.AddSingleton<PollingWorker>(sp => sp.GetRequiredService<Scores365Worker>());
 
 builder.Services.AddHttpClient<ApiFootballProvider>((sp, client) =>
 {
