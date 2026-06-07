@@ -6,6 +6,29 @@ using SportsMonitor.Domain.Configuration;
 using SportsMonitor.Infrastructure.Providers;
 using SportsMonitor.Infrastructure.Resolvers;
 
+if (args.Contains("--help") || args.Contains("-h"))
+{
+    Console.WriteLine("""
+        SportsMonitor.LocalAgent — relay SofaScore data to a remote BFF
+
+        Usage:
+          SportsMonitor.LocalAgent.exe [options]
+
+        Options:
+          --bff-url <url>      BFF server URL  (default: value in appsettings.json)
+          --interval <seconds> Polling interval (default: 30)
+          --help, -h           Show this help
+
+        Config file (edit to change defaults):
+          appsettings.json  — must be in the same folder as the .exe
+          Key: "BffUrl"     — URL of the remote BFF (e.g. "http://34.151.245.70")
+
+        Example — point to a different server:
+          SportsMonitor.LocalAgent.exe --bff-url http://NOVO-IP
+        """);
+    return;
+}
+
 var options = LocalAgentOptions.Load(args);
 using var cts = new CancellationTokenSource();
 Console.CancelKeyPress += (_, eventArgs) =>
@@ -20,15 +43,22 @@ using var bffHttp = new HttpClient
     Timeout = TimeSpan.FromSeconds(30)
 };
 
-await using var provider = new SofaScoreProvider(
+using var sofaHttp = new HttpClient();
+var provider = new SofaScoreHttpProvider(
+    sofaHttp,
     options.SofaScore,
     new FuzzyMatchResolver(),
-    NullLogger<SofaScoreProvider>.Instance);
+    NullLogger<SofaScoreHttpProvider>.Instance);
 
 var jsonOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web);
 jsonOptions.Converters.Add(new JsonStringEnumConverter());
 
-Console.WriteLine($"SportsMonitor.LocalAgent started. BFF: {options.BffUrl}. Interval: {options.IntervalSeconds}s.");
+Console.WriteLine($"SportsMonitor.LocalAgent iniciado.");
+Console.WriteLine($"  BFF:      {options.BffUrl}");
+Console.WriteLine($"  Intervalo: {options.IntervalSeconds}s");
+Console.WriteLine($"  Para mudar o servidor: edite appsettings.json (BffUrl) ou use --bff-url <url>");
+Console.WriteLine("Pressione Ctrl+C para parar.");
+Console.WriteLine();
 
 while (!cts.Token.IsCancellationRequested)
 {
@@ -59,7 +89,7 @@ while (!cts.Token.IsCancellationRequested)
     }
 }
 
-Console.WriteLine("SportsMonitor.LocalAgent stopped.");
+Console.WriteLine("SportsMonitor.LocalAgent parado.");
 
 internal sealed class LocalAgentOptions
 {

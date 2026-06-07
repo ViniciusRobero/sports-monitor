@@ -69,7 +69,7 @@ try {
         $config = [ordered]@{
             Demo = [ordered]@{ Enabled = $false }
             Providers = [ordered]@{
-                SofaScore = [ordered]@{ Enabled = $true; PollingIntervalSeconds = 30 }
+                SofaScore = [ordered]@{ Enabled = $false; PollingIntervalSeconds = 30 }
                 Scores365 = [ordered]@{ Enabled = $true; PollingIntervalSeconds = 20 }
                 Google = [ordered]@{
                     Enabled = $true
@@ -123,15 +123,8 @@ sudo find '$AppDir' -mindepth 1 -maxdepth 1 -exec rm -rf {} +
 sudo cp -a "$homeDir/sportsmonitor-upload/publish-linux/." '$AppDir/'
 if [ -f "$homeDir/appsettings.Production.json" ]; then sudo cp "$homeDir/appsettings.Production.json" '$AppDir/'; fi
 sudo chmod +x '$AppDir/SportsMonitor.Bff'
-sudo chmod +x '$AppDir/.playwright/node/linux-x64/node'
 sudo mkdir -p '$AppDir/data'
 sudo chown -R '${remoteUser}:${remoteUser}' '$AppDir'
-PLAYWRIGHT_NODE='$AppDir/.playwright/node/linux-x64/node'
-PLAYWRIGHT_CLI='$AppDir/.playwright/package/cli.js'
-echo "==> Installing Playwright Chromium system dependencies..."
-sudo `$PLAYWRIGHT_NODE `$PLAYWRIGHT_CLI install-deps chromium
-echo "==> Downloading Chromium browser binary..."
-PLAYWRIGHT_BROWSERS_PATH='$AppDir/.playwright' `$PLAYWRIGHT_NODE `$PLAYWRIGHT_CLI install chromium
 sudo mv "$homeDir/sportsmonitor.service" /etc/systemd/system/sportsmonitor.service
 sudo mv "$homeDir/nginx-sportsmonitor.conf" /etc/nginx/sites-available/sportsmonitor
 sudo ln -sfn /etc/nginx/sites-available/sportsmonitor /etc/nginx/sites-enabled/sportsmonitor
