@@ -5,7 +5,6 @@ color 0A
 
 :: === Configuracoes ===
 set "REPO_URL=https://github.com/ViniciusRobero/sports-monitor.git"
-set "INSTALL_DIR=C:\SportsMonitor"
 set "EXE=%~dp0SportsMonitor.LocalAgent.exe"
 set "LOCAL_PROJECT=%~dp0src\SportsMonitor.LocalAgent"
 set "SETTINGS=%~dp0appsettings.json"
@@ -28,30 +27,28 @@ if exist "%EXE%" goto :run
 echo  [SETUP] Executavel nao encontrado. Iniciando configuracao...
 echo.
 
-:: Caso A: rodando de dentro do repositorio (ex: C:\projetoBets\)
 if exist "%LOCAL_PROJECT%\" (
-    echo  [SETUP] Repositorio local detectado. Compilando...
+    echo  [SETUP] Projeto local detectado. Compilando...
     call :compile "%LOCAL_PROJECT%"
     if errorlevel 1 goto :erro_compilacao
     goto :run
 )
 
-:: Caso B: repositorio em C:\SportsMonitor
-if exist "%INSTALL_DIR%\src\SportsMonitor.LocalAgent\" (
-    echo  [SETUP] Repositorio encontrado em %INSTALL_DIR%. Compilando...
-    call :compile "%INSTALL_DIR%\src\SportsMonitor.LocalAgent"
+if exist "C:\SportsMonitor\src\SportsMonitor.LocalAgent\" (
+    echo  [SETUP] Projeto encontrado em C:\SportsMonitor. Compilando...
+    call :compile "C:\SportsMonitor\src\SportsMonitor.LocalAgent"
     if errorlevel 1 goto :erro_compilacao
     goto :run
 )
 
-:: Caso C: nada encontrado — mostrar tutorial e baixar
+:: Nada encontrado — mostrar tutorial
 echo  ============================================================
 echo   PRIMEIRO USO — Siga os passos abaixo:
 echo  ============================================================
 echo.
-echo   1. Abra outro terminal (PowerShell ou cmd) e rode:
+echo   1. Abra outro terminal e rode:
 echo.
-echo      git clone %REPO_URL% %INSTALL_DIR%
+echo      git clone %REPO_URL% C:\SportsMonitor
 echo.
 echo   2. Volte aqui e pressione ENTER para continuar.
 echo.
@@ -59,28 +56,27 @@ echo   (Se nao tiver git: instale em https://git-scm.com/download/win)
 echo.
 pause
 
-if not exist "%INSTALL_DIR%\src\SportsMonitor.LocalAgent\" (
+if not exist "C:\SportsMonitor\src\SportsMonitor.LocalAgent\" (
     echo.
-    echo  [ERRO] Repositorio nao encontrado em %INSTALL_DIR%
+    echo  [ERRO] Repositorio nao encontrado em C:\SportsMonitor
     echo         Verifique se o clone foi concluido corretamente.
     pause
     exit /b 1
 )
 
-echo.
-echo  [SETUP] Repositorio encontrado. Verificando .NET SDK...
+echo  [SETUP] Verificando .NET SDK...
 where dotnet >nul 2>&1
 if errorlevel 1 (
     echo.
     echo  [ERRO] .NET 10 SDK nao encontrado.
-    echo         Instale em: https://dot.net/download  ^(escolha .NET 10 SDK^)
+    echo         Instale em: https://dot.net/download
     echo         Apos instalar, feche e reabra este arquivo.
     pause
     exit /b 1
 )
 
-echo  [SETUP] Compilando LocalAgent (aguarde ~1-2 minutos)...
-call :compile "%INSTALL_DIR%\src\SportsMonitor.LocalAgent"
+echo  [SETUP] Compilando (aguarde ~1-2 minutos)...
+call :compile "C:\SportsMonitor\src\SportsMonitor.LocalAgent"
 if errorlevel 1 goto :erro_compilacao
 
 :: ============================================================
@@ -88,12 +84,12 @@ if errorlevel 1 goto :erro_compilacao
 :: ============================================================
 :run
 echo.
-echo  [OK] LocalAgent pronto. Iniciando em loop...
-echo       Logs em: %LOG_DIR%
-echo       Para parar: feche esta janela.
+echo  [OK] Pronto!
+echo  Para parar: feche esta janela ou Ctrl+C
 echo.
 
 :loop
+    :: Nome do log pelo dia atual
     for /f "tokens=2 delims==" %%d in ('wmic os get LocalDateTime /value 2^>nul') do set "WMIDT=%%d"
     if defined WMIDT (
         set "LOGDATE=!WMIDT:~0,4!-!WMIDT:~4,2!-!WMIDT:~6,2!"
@@ -102,15 +98,18 @@ echo.
     )
     set "SM_LOG=%LOG_DIR%\agent-!LOGDATE!.log"
 
-    echo [%time%] Iniciando...
+    echo [%time%] Iniciando LocalAgent...
     echo [%date% %time%] === INICIO === >> "!SM_LOG!"
 
-    set "SM_EXE=%EXE%"
-    powershell -NoProfile -Command ^
-        "& { & $env:SM_EXE *>&1 | Tee-Object -FilePath $env:SM_LOG -Append }"
+    :: Executa o agent — output aparece no console, eventos gravados no log
+    "%EXE%"
+    set "EXIT_CODE=!ERRORLEVEL!"
 
-    echo [%time%] Encerrado. Reiniciando em %RESTART_DELAY%s...
-    echo [%date% %time%] Encerrado (reiniciando). >> "!SM_LOG!"
+    echo.
+    echo [%time%] Processo encerrado (codigo: !EXIT_CODE!).
+    echo [%date% %time%] === FIM (codigo !EXIT_CODE!) === >> "!SM_LOG!"
+    echo [%time%] Reiniciando em %RESTART_DELAY%s... (feche a janela para parar)
+    echo.
     timeout /t %RESTART_DELAY% /nobreak > nul
 goto loop
 
@@ -125,9 +124,9 @@ goto loop
     if errorlevel 1 exit /b 1
     if not exist "%SETTINGS%" (
         copy /y "%~1\appsettings.json" "%SETTINGS%" >nul 2>&1
-        echo  [SETUP] appsettings.json criado. Edite BffUrl se necessario.
+        echo  [SETUP] appsettings.json criado.
     )
-    echo  [SETUP] Pronto!
+    echo  [SETUP] Compilado com sucesso!
 exit /b 0
 
 :erro_compilacao
