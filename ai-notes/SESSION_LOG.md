@@ -1,4 +1,106 @@
+﻿## 2026-06-07 - GCP Deploy, VM Cleanup, and 365Scores Disk Fix
+
+### Goal
+
+Deploy SportsMonitor to GCP, clean the VM disk, and keep the account focused on SportsMonitor.
+
+### Work Done
+
+- Used project `sportsmonitor-prod`, VM `sportsmonitor-vm`, zone `southamerica-east1-b`.
+- Cleaned the VM disk after `/opt/sportsmonitor/data/2026-06-07/snapshots/365scores.jsonl` reached about 16GB and filled the 20GB disk.
+- Removed old remote upload artifacts and old snapshot data.
+- Deployed the BFF + Angular dashboard behind Nginx/systemd.
+- Validated public HTTP access at `http://34.151.245.70/`.
+- Found that 365Scores was persisting huge raw payloads repeatedly; changed `Scores365Provider` to stop storing `RawJson` for this source.
+- Redeployed the corrected BFF and cleaned remote data again.
+- After several polling cycles, `365scores.jsonl` stayed around hundreds of KB instead of GB.
+- Listed other accessible GCP projects. No Compute/Cloud Run/SQL/GKE/Functions resources were found outside `sportsmonitor-prod`; only old buckets were listed in other projects. Cross-project bucket deletion was not executed because it is broad and irreversible.
+
+### Validation
+
+- `dotnet build src\SportsMonitor.slnx --no-restore`: passed.
+- `dotnet test src\SportsMonitor.slnx --no-build`: 78 passed.
+- Production dashboard: HTTP 200.
+- Production `/api/matches/live`: returned live match groups.
+- Remote services: `sportsmonitor` active, `nginx` active.
+- Remote disk after cleanup/fix: about 20% used, about 16GB free.
+
+### Access
+
+- URL: `http://34.151.245.70/`
+
+---
 # Session Log
+
+## 2026-06-07 - SofaScore Playwright Migration + GCP Deploy Completo
+
+### Goal
+
+1. Substituir HttpClient por Microsoft.Playwright no SofaScoreProvider para contornar HTTP 403 (TLS fingerprinting).
+2. Confirmar que Playwright funciona no GCP.
+3. Subir o projeto no GCP Compute Engine com IP pÃºblico acessÃ­vel.
+
+### Work Done
+
+**SofaScore â€” migraÃ§Ã£o para Playwright (headless Chrome):**
+- Removido `HttpClient` do `SofaScoreProvider`.
+- Adicionado `Microsoft.Playwright 1.60.0` ao `SportsMonitor.Infrastructure.csproj`.
+- `SofaScoreProvider` reescrito: lazy-init do browser via `SemaphoreSlim(1,1)`, cria `BrowserContext` por poll, usa `page.EvaluateAsync<string>` para executar `fetch()` dentro do Chrome real â€” TLS fingerprint genuÃ­no (JA3/JA4).
+- `SofaScoreMapper` extraÃ­do como `internal static class` em arquivo separado, com `[assembly: InternalsVisibleTo("SportsMonitor.Tests")]`.
+- `Program.cs` atualizado: `AddSingleton<SofaScoreProvider>()` (sem HttpClient registration).
+- `sportsmonitor.service` atualizado com `Environment=PLAYWRIGHT_BROWSERS_PATH=/opt/sportsmonitor/.playwright`.
+- Testes de `SofaScoreProvider` reescritos para testar `SofaScoreMapper` diretamente (sem stub HTTP, sem Playwright).
+
+**GCP Deploy â€” trÃªs bugs corrigidos no deploy-gcp.ps1:**
+1. **BOM UTF-8 (PS5.1):** `Set-Content -Encoding UTF8` escreve BOM que quebra `#!/bin/bash`. Fix: `[System.IO.File]::WriteAllText(path, content, [System.Text.UTF8Encoding]::new($false))`.
+2. **pscp nesting:** Se destino jÃ¡ existe, pscp aninha source dir dentro dele. Fix: `rm -rf && mkdir -p` antes do SCP, e `cp -a ".../publish-linux/."` no install.sh.
+3. **playwright.sh inexistente:** Publish output sÃ³ tem `playwright.ps1`, nÃ£o `.sh`. Fix: usar Node.js embutido em `.playwright/node/linux-x64/node` + `.playwright/package/cli.js` diretamente para `install-deps` e `install chromium`.
+
+**GCP Deploy â€” resultado:**
+- Chromium 148.0.7778.96 instalado em `/opt/sportsmonitor/.playwright/chromium-1223`.
+- nginx configurado e testado OK.
+- systemd service `sportsmonitor` ativo e respondendo.
+- 365Scores polling confirmado nos logs (HTTP 200).
+- App acessÃ­vel em `http://34.151.245.70/`.
+
+### GCP Details
+
+| Campo | Valor |
+|---|---|
+| Project ID | `sportsmonitor-prod` |
+| VM | `sportsmonitor-vm` |
+| Zone | `southamerica-east1-b` |
+| IP Externo | `34.151.245.70` |
+| URL | `http://34.151.245.70/` |
+| Billing Account | `01FE90-8618C8-3CEE8F` |
+| Google User | `viniciusroberto17@gmail.com` (authuser=1 em links GCP) |
+
+### Validation
+
+- Deploy script executado com sucesso de ponta a ponta.
+- `systemctl is-active sportsmonitor` â†’ `active`.
+- Logs: `Scores365Provider` fazendo polling HTTP 200 a cada 10s.
+- SofaScore worker inicializa browser Playwright no primeiro poll.
+
+### Files Changed
+
+- `src/SportsMonitor.Infrastructure/SportsMonitor.Infrastructure.csproj`
+- `src/SportsMonitor.Infrastructure/Providers/SofaScoreProvider.cs`
+- `src/SportsMonitor.Infrastructure/Providers/SofaScoreMapper.cs` (novo)
+- `src/SportsMonitor.Bff/Program.cs`
+- `src/SportsMonitor.Tests/Providers/SofaScoreProviderTests.cs`
+- `sportsmonitor.service`
+- `deploy-gcp.ps1`
+- `setup-gcp-vm.ps1`
+
+### Remaining
+
+- Validar SofaScore em produÃ§Ã£o (buscar partidas ao vivo e confirmar respostas da API via Playwright).
+- Google API key (opcional): `.\setup-google-search-key.ps1 -ProjectId sportsmonitor-prod`.
+- Instalar Playwright localmente para dev: `& src\SportsMonitor.Bff\bin\Debug\net10.0\playwright.ps1 install chromium`.
+
+---
+
 
 ## 2026-06-07 - Real Providers, Frontend UX, and Linux/GCP Deploy Prep
 
@@ -333,11 +435,11 @@ Research all source categories except official competition websites and produce 
 
 ### Findings
 
-- **API-Football** ($19-39/mo): Best MVP candidate for sports data. Live events every 15s, 1200+ competitions, Brasileirão/Libertadores/Copa do Brasil covered. No live odds.
-- **Sportmonks** (€129/mo for Brazil): Alternative with slightly better Brazil coverage. Worldwide plan needed. Free 14-day trial. No WebSocket.
-- **football-data.org** (€0-29/mo): Low cost secondary source. Brasileirão free. No Copa Libertadores. No odds.
+- **API-Football** ($19-39/mo): Best MVP candidate for sports data. Live events every 15s, 1200+ competitions, BrasileirÃ£o/Libertadores/Copa do Brasil covered. No live odds.
+- **Sportmonks** (â‚¬129/mo for Brazil): Alternative with slightly better Brazil coverage. Worldwide plan needed. Free 14-day trial. No WebSocket.
+- **football-data.org** (â‚¬0-29/mo): Low cost secondary source. BrasileirÃ£o free. No Copa Libertadores. No odds.
 - **Sportradar**: Enterprise only ($10k+/mo). Not viable for MVP.
-- **The Odds API** ($29-99/mo): Best documented odds API. Pro $29/mo for pre-match, Business $99/mo for live + Pinnacle + 50+ books. Brasileirão Serie A covered.
+- **The Odds API** ($29-99/mo): Best documented odds API. Pro $29/mo for pre-match, Business $99/mo for live + Pinnacle + 50+ books. BrasileirÃ£o Serie A covered.
 - **BetsAPI**: Only source with confirmed Bet365 live odds + market suspension status (3-5s update). Pricing requires login. Medium legal/ToS risk (commercial redistributor).
 - **SofaScore**: No official API. FAQ confirms unavailability. Excluded from MVP.
 - **Flashscore**: No official API. Only Apify scrapers. Excluded from MVP.
@@ -349,9 +451,9 @@ Research all source categories except official competition websites and produce 
 
 ### Decisions Made
 
-- Live score apps (SofaScore, Flashscore, FotMob) excluded from MVP — no official APIs
-- Sportradar and OpticOdds excluded from MVP — enterprise pricing
-- Direct bookmaker integration (Bet365, Betano, etc.) excluded — no public APIs, ToS violation
+- Live score apps (SofaScore, Flashscore, FotMob) excluded from MVP â€” no official APIs
+- Sportradar and OpticOdds excluded from MVP â€” enterprise pricing
+- Direct bookmaker integration (Bet365, Betano, etc.) excluded â€” no public APIs, ToS violation
 - BetsAPI identified as primary path for Bet365 live odds + suspension status
 - Betfair Exchange API identified as only free bookmaker API with live streaming
 
@@ -371,7 +473,7 @@ Research all source categories except official competition websites and produce 
 
 ### Next Step
 
-1. Research official competition websites (63 listed) — done in next session
+1. Research official competition websites (63 listed) â€” done in next session
 2. Manual validation of BetsAPI pricing and The Odds API suspension status
 3. Confirm Betfair Brazil feasibility
 4. Produce final Phase 01 viability report
@@ -396,13 +498,13 @@ Research all 63 official competition websites to determine if any expose a publi
 ### Findings
 
 - **Central finding:** NO official competition site has a public developer API for live match data
-- **Exception: OpenLigaDB** — free, no-auth community API covering Bundesliga, 2. Bundesliga, DFB-Pokal. api.openligadb.de. Rate: 1000 req/h. No authentication.
+- **Exception: OpenLigaDB** â€” free, no-auth community API covering Bundesliga, 2. Bundesliga, DFB-Pokal. api.openligadb.de. Rate: 1000 req/h. No authentication.
 - **Lega Serie A:** Genius Sports holds exclusive official data rights through 2029 (no direct access)
 - **UEFA:** Azure API management portal exists but is partner/media-only
-- **CBF:** campeonatos.cbf.com.br is an internal endpoint — unofficial and fragile
+- **CBF:** campeonatos.cbf.com.br is an internal endpoint â€” unofficial and fragile
 - **All other sites:** depend on API-Football, Sportmonks, or football-data.org
-- **Bonus discovery: API Futebol** (api-futebol.com.br) — Brazilian-specific commercial API for Brasileirão, Copa do Brasil, Libertadores, Estaduais, Copinha
-- **Bonus discovery: TheSportsDB** — free crowdsourced database, good for metadata/logos, not live events
+- **Bonus discovery: API Futebol** (api-futebol.com.br) â€” Brazilian-specific commercial API for BrasileirÃ£o, Copa do Brasil, Libertadores, Estaduais, Copinha
+- **Bonus discovery: TheSportsDB** â€” free crowdsourced database, good for metadata/logos, not live events
 - **API-Football Pro ($19/mo) covers all 63 competitions**
 
 ### Decisions Made
@@ -438,23 +540,23 @@ Integrate `PHASE_02_PLUS_PLANNING_UPDATE.md` (operational requirements from Josi
 - Extracted full content of PHASE_02_PLUS_PLANNING_UPDATE.md from session transcript
 - Saved PHASE_02_PLUS_PLANNING_UPDATE.md to project folder
 - Added desktop-first requirement (WPF/WinForms + WebView2 shell) and .NET stack confirmation to the document
-- Updated PROJECT_CONTEXT.md with: operational workflow, source priority, desktop-first requirement, World Cup 2026 (#64), phase roadmap 02–08, tech stack, new decisions, open questions
+- Updated PROJECT_CONTEXT.md with: operational workflow, source priority, desktop-first requirement, World Cup 2026 (#64), phase roadmap 02â€“08, tech stack, new decisions, open questions
 - Updated NEXT_STEPS.md with Phase 02 deliverable and source tension documentation
 
 ### Findings
 
-- Josias confirmed operational flow: system alerts → analyst manually verifies → analyst manually acts
+- Josias confirmed operational flow: system alerts â†’ analyst manually verifies â†’ analyst manually acts
 - Primary comparison sources: 365Scores, SofaScore, Google, official competition website
-- Alert is audible ("apito") + dashboard card — mandatory for MVP
+- Alert is audible ("apito") + dashboard card â€” mandatory for MVP
 - Desktop-first: Windows app (WPF/WinForms + WebView2), trivially migratable to web (same ASP.NET Core core)
-- FIFA World Cup 2026 added as competition #64 (Very High priority, June 11–July 19 2026, 48 teams, 104 matches)
+- FIFA World Cup 2026 added as competition #64 (Very High priority, June 11â€“July 19 2026, 48 teams, 104 matches)
 - **Critical tension**: SofaScore, 365Scores, Google have no official APIs but are the desired primary sources
 
 ### Decisions Made
 
 - Desktop-first: WPF or WinForms + WebView2 as thin shell around ASP.NET Core + Angular
 - Technology stack locked: ASP.NET Core (.NET 8+), Angular, SignalR, SQLite, WPF/WinForms, WebView2
-- Betting action confirmed as fully manual — system only alerts
+- Betting action confirmed as fully manual â€” system only alerts
 - Manual verification workflow is a required MVP feature
 - Official competition website = preferred truth/reference source
 
@@ -475,7 +577,7 @@ Integrate `PHASE_02_PLUS_PLANNING_UPDATE.md` (operational requirements from Josi
 
 **"Which .md file to send to the next chat for Phase 02 planning?"**
 
-Send **`PROJECT_CONTEXT.md`** — the master handoff file, now updated with all new requirements.
+Send **`PROJECT_CONTEXT.md`** â€” the master handoff file, now updated with all new requirements.
 
 Optionally send **`PHASE_02_PLUS_PLANNING_UPDATE.md`** alongside it for full operational detail (workflow, verification table, divergence types, dashboard requirements, prompt template for next phase).
 
@@ -507,23 +609,23 @@ Research unofficial internal API endpoints for SofaScore, 365Scores, and Google 
 - Base URL: `https://api.sofascore.com/api/v1`
 - Live events: `GET /sport/football/events/live`
 - Incidents (goals/cards/subs): `GET /event/{eventId}/incidents`
-- CloudFlare básico — User-Agent browser + 25-30s interval; sem auth
-- Viável: sim
+- CloudFlare bÃ¡sico â€” User-Agent browser + 25-30s interval; sem auth
+- ViÃ¡vel: sim
 
 **365Scores:**
 - Base URL: `https://webws.365scores.com/web/`
 - Game details: `GET /game/?appTypeId=5&langId=31&timezoneName=America/Sao_Paulo&userCountryId=-1&gameId={id}`
 - Results by competition: `GET /games/results/?...&competitions={id}`
-- Sem auth; proteção básica
-- Viável: sim
+- Sem auth; proteÃ§Ã£o bÃ¡sica
+- ViÃ¡vel: sim
 
 **Google:**
-- Sem endpoint JSON público acessível sem serviço pago (SerpApi $50+/mo)
-- Solução: dashboard gera link de busca Google para verificação manual
-- Automatizado: não viável
+- Sem endpoint JSON pÃºblico acessÃ­vel sem serviÃ§o pago (SerpApi $50+/mo)
+- SoluÃ§Ã£o: dashboard gera link de busca Google para verificaÃ§Ã£o manual
+- Automatizado: nÃ£o viÃ¡vel
 
-**Histórico:**
-- Usuário confirmou que quer histórico salvo por fonte (SQLite ou arquivo)
+**HistÃ³rico:**
+- UsuÃ¡rio confirmou que quer histÃ³rico salvo por fonte (SQLite ou arquivo)
 - Schema proposto: tabelas `source_readings`, `source_events`, `divergences`, `matches`
 - Alternativa simples: JSONL por partida em /data/matches/
 
@@ -531,9 +633,9 @@ Research unofficial internal API endpoints for SofaScore, 365Scores, and Google 
 
 - SofaScore: integrar via api.sofascore.com/api/v1
 - 365Scores: integrar via webws.365scores.com/web/
-- Google: link manual no dashboard — não automatizado
-- Histórico: persistir todos os payloads coletados no SQLite (uma linha por poll por fonte)
-- Normalização de IDs é problema crítico: Match Resolver necessário
+- Google: link manual no dashboard â€” nÃ£o automatizado
+- HistÃ³rico: persistir todos os payloads coletados no SQLite (uma linha por poll por fonte)
+- NormalizaÃ§Ã£o de IDs Ã© problema crÃ­tico: Match Resolver necessÃ¡rio
 
 ### Files Changed
 
@@ -554,36 +656,36 @@ Begin Phase 02: create `PHASE_02_FUNCTIONAL_REQUIREMENTS_AND_OPERATIONAL_WORKFLO
 
 ### Goal
 
-Definir a arquitetura técnica do sistema com design patterns simples, extensíveis e orientados a tempo real.
+Definir a arquitetura tÃ©cnica do sistema com design patterns simples, extensÃ­veis e orientados a tempo real.
 
 ### Work Done
 
-- Discutiu opções de workers (orquestrador vs independentes vs channel)
-- Decidiu por workers independentes + detecção reativa via SnapshotStore event
-- Adicionou IOptionsMonitor para intervalos de polling configuráveis e hot-reloadable
+- Discutiu opÃ§Ãµes de workers (orquestrador vs independentes vs channel)
+- Decidiu por workers independentes + detecÃ§Ã£o reativa via SnapshotStore event
+- Adicionou IOptionsMonitor para intervalos de polling configurÃ¡veis e hot-reloadable
 - Criou PHASE_03_TECHNICAL_ARCHITECTURE.md com arquitetura completa
 
 ### Decisions Made
 
 - Workers independentes por fonte (SofaScoreWorker, Api365ScoresWorker, ApiFootballWorker, BetfairStreamWorker, AlertWorker)
-- DivergenceEngine é reativo — dispara quando qualquer snapshot atualiza (não tem loop próprio)
-- IOptionsMonitor<T> para polling intervals — hot-reload via appsettings.json, futuro: UI settings
-- PollingWorker<TOptions> base class elimina repetição nos workers
-- Channel<Divergence> desacopla detecção do envio de alerta
-- JSONL como storage MVP (JsonlMatchHistoryRepository) — trocar por SQLite = só trocar registro no DI
+- DivergenceEngine Ã© reativo â€” dispara quando qualquer snapshot atualiza (nÃ£o tem loop prÃ³prio)
+- IOptionsMonitor<T> para polling intervals â€” hot-reload via appsettings.json, futuro: UI settings
+- PollingWorker<TOptions> base class elimina repetiÃ§Ã£o nos workers
+- Channel<Divergence> desacopla detecÃ§Ã£o do envio de alerta
+- JSONL como storage MVP (JsonlMatchHistoryRepository) â€” trocar por SQLite = sÃ³ trocar registro no DI
 - IMatchDataProvider, IDivergenceRule, IAlertChannel, IMatchHistoryRepository como extensibility points
-- FuzzyMatchResolver para correlação de IDs entre fontes (nome + horário ±5min + competição)
+- FuzzyMatchResolver para correlaÃ§Ã£o de IDs entre fontes (nome + horÃ¡rio Â±5min + competiÃ§Ã£o)
 
 ### Files Changed
 
 - `PHASE_03_TECHNICAL_ARCHITECTURE.md` (created)
-- `PROJECT_CONTEXT.md` (updated — Phase 03 complete, next = Phase 04)
+- `PROJECT_CONTEXT.md` (updated â€” Phase 03 complete, next = Phase 04)
 - `ai-notes/NEXT_STEPS.md` (updated)
 - `ai-notes/SESSION_LOG.md` (this entry)
 
 ### Next Step
 
-Phase 04: criar PHASE_04_MVP_IMPLEMENTATION_PLAN.md com tasks implementáveis em ordem.
+Phase 04: criar PHASE_04_MVP_IMPLEMENTATION_PLAN.md com tasks implementÃ¡veis em ordem.
 
 ---
 
@@ -591,7 +693,7 @@ Phase 04: criar PHASE_04_MVP_IMPLEMENTATION_PLAN.md com tasks implementáveis em
 
 ### Goal
 
-Retomar a partir do plano de implementação e estabilizar os primeiros componentes do MVP com testes.
+Retomar a partir do plano de implementaÃ§Ã£o e estabilizar os primeiros componentes do MVP com testes.
 
 ### Work Done
 
@@ -599,7 +701,7 @@ Retomar a partir do plano de implementação e estabilizar os primeiros componen
 - Corrigiu `MatchBuilder.WithCollectedAt`
 - Adicionou `DivergenceBuilder` para testes
 - Implementou `DivergenceEngine`
-- Adicionou modelos de configuração dos providers
+- Adicionou modelos de configuraÃ§Ã£o dos providers
 - Implementou `ApiFootballProvider` com mapeamento de JSON mockado
 - Adicionou testes para JSONL, engine reativo e provider
 - Atualizou handoff em `PROJECT_CONTEXT.md` e `ai-notes/NEXT_STEPS.md`
@@ -619,12 +721,12 @@ Criar projeto Workers e implementar `PollingWorker` base + `ApiFootballWorker`, 
 
 ### Goal
 
-Continuar a implementação do MVP e salvar contexto antes do limite da sessão.
+Continuar a implementaÃ§Ã£o do MVP e salvar contexto antes do limite da sessÃ£o.
 
 ### Work Done
 
 - Criou projeto `SportsMonitor.Workers`
-- Implementou `PollingWorker` base com `CollectOnceAsync` testável
+- Implementou `PollingWorker` base com `CollectOnceAsync` testÃ¡vel
 - Implementou `ApiFootballWorker`
 - Implementou `AlertWorker`
 - Criou projeto `SportsMonitor.Bff`
@@ -635,7 +737,7 @@ Continuar a implementação do MVP e salvar contexto antes do limite da sessão.
 - Implementou `AlertHub` em `/hubs/alerts`
 - Implementou `SignalRAlertChannel`
 - Fez wiring inicial de DI no `Program.cs`
-- Adicionou `appsettings.json` com `ApiFootball` desabilitado por padrão
+- Adicionou `appsettings.json` com `ApiFootball` desabilitado por padrÃ£o
 
 ### Current Test Status
 
@@ -644,7 +746,7 @@ Continuar a implementação do MVP e salvar contexto antes do limite da sessão.
 
 ### Next Step
 
-Retomar validando `dotnet run --project SportsMonitor.Bff`, depois criar o dashboard Angular mínimo com SignalR e som de alerta.
+Retomar validando `dotnet run --project SportsMonitor.Bff`, depois criar o dashboard Angular mÃ­nimo com SignalR e som de alerta.
 
 ---
 
@@ -688,3 +790,4 @@ Continue from the packaged MVP and make the demo more useful for user testing, e
 ### Next Step
 
 Smoke test the published desktop app on a clean Windows machine, then validate real BetsAPI and Google credentials.
+

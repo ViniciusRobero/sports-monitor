@@ -46,13 +46,14 @@ public class Scores365ProviderTests
         """;
 
     [Fact]
-    public async Task GetLiveMatchesAsync_ReturnsOnlySoccerLiveGames()
+    public async Task GetLiveMatchesAsync_ReturnsOnlySoccerGames()
     {
         var provider = BuildProvider(LiveGamesJson);
 
         var result = await provider.GetLiveMatchesAsync(CancellationToken.None);
 
-        result.Should().ContainSingle();
+        result.Should().HaveCount(2);
+        result.Should().AllSatisfy(m => m.Source.Should().Be("365scores"));
     }
 
     [Fact]

@@ -3,6 +3,7 @@
   <Project Path="SportsMonitor.Bff/SportsMonitor.Bff.csproj" />
   <Project Path="SportsMonitor.Domain/SportsMonitor.Domain.csproj" />
   <Project Path="SportsMonitor.Infrastructure/SportsMonitor.Infrastructure.csproj" />
+  <Project Path="SportsMonitor.LocalAgent/SportsMonitor.LocalAgent.csproj" />
   <Project Path="SportsMonitor.Tests/SportsMonitor.Tests.csproj" />
   <Project Path="SportsMonitor.Workers/SportsMonitor.Workers.csproj" />
   <Project Path="SportsMonitor.Desktop/SportsMonitor.Desktop.csproj" />

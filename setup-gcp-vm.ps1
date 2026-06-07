@@ -29,9 +29,11 @@ Invoke-Gcloud config set project $ProjectId
 Write-Host "==> Enabling required Compute API..." -ForegroundColor Cyan
 Invoke-Gcloud services enable compute.googleapis.com
 
-$instanceExists = $true
-& gcloud compute instances describe $InstanceName --zone $Zone --project $ProjectId *> $null
-if ($LASTEXITCODE -ne 0) { $instanceExists = $false }
+$instanceExists = $false
+try {
+    $null = gcloud compute instances describe $InstanceName --zone $Zone --project $ProjectId 2>&1
+    if ($LASTEXITCODE -eq 0) { $instanceExists = $true }
+} catch { $instanceExists = $false }
 
 if (-not $instanceExists) {
     Write-Host "==> Creating VM: $InstanceName" -ForegroundColor Cyan
@@ -42,14 +44,16 @@ if (-not $instanceExists) {
         --image-family ubuntu-2204-lts `
         --image-project ubuntu-os-cloud `
         --boot-disk-size $BootDiskSize `
-        --tags http-server,https-server
+        --tags "http-server,https-server"
 } else {
     Write-Host "==> VM already exists: $InstanceName" -ForegroundColor Yellow
 }
 
-$firewallExists = $true
-& gcloud compute firewall-rules describe allow-sportsmonitor-http --project $ProjectId *> $null
-if ($LASTEXITCODE -ne 0) { $firewallExists = $false }
+$firewallExists = $false
+try {
+    $null = gcloud compute firewall-rules describe allow-sportsmonitor-http --project $ProjectId 2>&1
+    if ($LASTEXITCODE -eq 0) { $firewallExists = $true }
+} catch { $firewallExists = $false }
 
 if (-not $firewallExists) {
     Write-Host "==> Creating firewall rule for HTTP..." -ForegroundColor Cyan

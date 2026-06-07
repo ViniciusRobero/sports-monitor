@@ -1,458 +1,307 @@
-# Sports Data Divergence Monitor
+# SportsMonitor
 
-> 🇧🇷 [Leia em Português](#monitor-de-divergências-em-dados-esportivos) · 🇺🇸 [Read in English](#sports-data-divergence-monitor-1)
+Um painel simples para acompanhar jogos de futebol ao vivo em várias fontes ao mesmo tempo e avisar quando alguma coisa não bate.
 
----
+O SportsMonitor foi pensado para uma pessoa que precisa agir rápido, mas sem confiar cegamente em uma única fonte. Ele olha para os dados da partida, compara placar, gols, cartões e status do jogo, e mostra um alerta quando encontra diferença entre as fontes.
 
-## Monitor de Divergências em Dados Esportivos
-
-Sistema **local, desktop-first** que monitora partidas de futebol ao vivo em múltiplas fontes de dados, detecta divergências em tempo real e alerta o analista com um som ("apito") para que ele verifique manualmente e atue na Bet365.
-
-> **Status:** MVP implementado e preparado para provedores reais + deploy Linux/GCP. 5 provedores, 5 regras de divergência, dashboard Angular, shell WPF, modo demo opcional. 78 testes passando.
+Ele não aposta sozinho. Ele não decide por você. Ele ajuda você a perceber que algo merece atenção.
 
 ---
 
-### O que faz
+## Para que ele serve
 
-O sistema acompanha partidas ao vivo simultaneamente na **Bet365** (via BetsAPI), **SofaScore**, **API-Football** e **365Scores**. Quando as fontes divergem — marcador de gol diferente, placar diferente, cartão no jogador errado, status de partida inconsistente — dispara um alerta sonoro e exibe um card de divergência no dashboard.
+Durante uma partida ao vivo, fontes diferentes podem mostrar informações com alguns segundos de diferença. Uma fonte pode mostrar um gol antes da outra. Outra pode atribuir o gol ao jogador errado. Outra pode ainda estar com o placar antigo.
 
-O analista então busca evidências de replay no **Google**, confirma se o evento é real e decide se age manualmente na **Bet365**. **O sistema nunca realiza apostas automaticamente.**
+O SportsMonitor junta essas informações em um único lugar para responder perguntas simples:
 
-### Exemplo
+- O placar está igual em todas as fontes?
+- O gol apareceu em todas?
+- O jogador do gol é o mesmo?
+- O cartão foi para o mesmo jogador?
+- A partida está ao vivo, no intervalo, encerrada ou suspensa?
+- Existe algum sinal externo, como resultados do Google, que ajude a conferir rapidamente?
 
-```
-Partida: Flamengo x Palmeiras — 32'
+Quando alguma dessas respostas parece estranha, o painel mostra uma divergência e toca um aviso sonoro.
+
+---
+
+## Como é a experiência de uso
+
+Você abre o painel e acompanha os jogos ao vivo.
+
+Cada partida aparece com as informações recebidas das fontes disponíveis. Quando tudo está coerente, a tela funciona como um acompanhamento normal: times, placar, status e eventos principais.
+
+Quando existe uma diferença, o sistema cria um card de alerta. Esse card mostra:
+
+- qual partida precisa de atenção;
+- qual foi a divergência encontrada;
+- quais fontes concordam entre si;
+- qual fonte está diferente;
+- a gravidade do alerta;
+- links e resultados de busca para ajudar na verificação manual.
+
+A ideia é reduzir o tempo entre "algo mudou no jogo" e "eu entendi o que preciso conferir".
+
+---
+
+## Exemplo simples
+
+Imagine este jogo:
+
+```text
+Flamengo x Palmeiras - 32 minutos
 
 SofaScore:    Gol de Pedro
-Bet365:       Gol de Arrascaeta
 API-Football: Gol de Pedro
-
-→ ALERTA CRÍTICO: GoalScorerMismatch
-  SofaScore + API-Football: Pedro
-  Bet365: Arrascaeta
-  → Buscar no Google → confirmar replay → agir manualmente na Bet365
+Bet365:       Gol de Arrascaeta
 ```
 
+Nesse caso, o SportsMonitor mostra um alerta crítico porque duas fontes dizem uma coisa e a Bet365 mostra outra.
+
+O usuário então confere o replay, olha os links de apoio, valida a informação e decide manualmente o que fazer.
+
 ---
 
-### Arquitetura
+## O que o sistema compara
 
+### Placar
+
+Compara o placar mostrado pelas fontes. Se uma fonte mostra `1 x 0` e outra mostra `0 x 0`, o painel destaca a diferença.
+
+### Gols
+
+Confere se os gols aparecem nas fontes e se o minuto do gol parece bater.
+
+### Jogador do gol
+
+Quando as fontes informam o autor do gol, o sistema compara os nomes. Se um lugar mostra Pedro e outro mostra Arrascaeta, isso vira alerta.
+
+### Cartões
+
+Compara cartões amarelos e vermelhos quando a fonte disponibiliza esse detalhe.
+
+### Status da partida
+
+Compara se o jogo está ao vivo, no intervalo, encerrado, adiado, cancelado ou suspenso.
+
+### Busca de apoio no Google
+
+O Google entra como apoio visual, não como fonte oficial de placar. O painel pode mostrar resultados de busca relacionados ao jogo para ajudar o usuário a abrir rapidamente uma notícia, tempo real ou página de confirmação.
+
+---
+
+## Fontes usadas
+
+O projeto pode trabalhar com estas fontes:
+
+| Fonte | O que ajuda a conferir |
+|---|---|
+| Bet365 via BetsAPI | Placar, eventos e referência operacional |
+| SofaScore | Placar, gols, cartões e incidentes da partida |
+| 365Scores | Principalmente placar e status |
+| API-Football | Eventos estruturados, quando configurada |
+| Google | Links e trechos para verificação manual |
+
+Nem todas precisam estar ligadas ao mesmo tempo. O sistema fica melhor quando tem mais de uma fonte ativa, porque a comparação fica mais forte.
+
+---
+
+## De quanto em quanto tempo atualiza
+
+Os intervalos podem ser mudados no arquivo `src/SportsMonitor.Bff/appsettings.json`.
+
+Na configuração atual do projeto:
+
+| Fonte ou módulo | Intervalo atual |
+|---|---:|
+| SofaScore no BFF | 10 segundos |
+| 365Scores | 10 segundos |
+| Google | 300 segundos, ou 5 minutos |
+| API-Football | 30 segundos, quando habilitada |
+| BetsAPI / Bet365 | 30 segundos, quando habilitada |
+| Modo demonstração | 10 segundos, quando habilitado |
+
+Também existe um agente local para SofaScore. Ele foi criado porque alguns servidores em nuvem podem receber bloqueio do SofaScore, enquanto uma máquina residencial costuma conseguir acessar normalmente. Por padrão, esse agente local envia dados para o BFF a cada 30 segundos.
+
+---
+
+## Onde o usuário vê as informações
+
+O usuário vê tudo no dashboard web.
+
+Em desenvolvimento, ele normalmente abre:
+
+```text
+http://localhost:4200
 ```
-Máquina do Usuário
-│
-├── Desktop Shell (WPF + WebView2)
-│   └── Inicia o BFF automaticamente e abre http://localhost:5000
-│
-├── ASP.NET Core BFF (localhost:5000)
-│   ├── REST API  GET /api/matches/live
-│   │            GET /api/divergences
-│   │            POST /api/divergences/{id}/verify
-│   ├── SignalR Hub /hubs/alerts  ←── push em tempo real para o dashboard
-│   └── Dashboard Angular
-│
-├── Worker Services .NET (polling em background)
-│   ├── ApiFootballWorker   (padrão 30s — API oficial)
-│   ├── BetsApiWorker       (padrão 30s — Bet365 via BetsAPI)
-│   ├── SofaScoreWorker     (padrão 30s — API interna SofaScore)
-│   ├── Scores365Worker     (padrão 20s — API interna 365Scores)
-│   ├── GoogleSearchWorker  (padrão 300s — Custom Search API)
-│   └── AlertWorker         (consome fila de divergências → SignalR)
-│
-├── In-Memory Snapshot Store   ← dispara SnapshotUpdated a cada atualização
-├── Divergence Engine          ← reativo, avalia todas as regras a cada snapshot
-│
-└── Storage (JSONL por fonte por dia)
-    data/2026-05-27/
-      snapshots/api_football.jsonl
-      snapshots/bet365.jsonl
-      snapshots/sofascore.jsonl
-      snapshots/365scores.jsonl
-      divergences.jsonl
-```
 
-### Padrões de design
+Quando o pacote desktop é usado, o aplicativo abre a tela sozinho. A pessoa não precisa entender os serviços por trás: ela executa o app e acompanha o painel.
 
-| Padrão | Onde | Propósito |
-|---|---|---|
-| Adapter | `IMatchDataProvider` | Adicionar fonte = adicionar uma classe |
-| Strategy | `IDivergenceRule` | Adicionar tipo de divergência = adicionar uma classe |
-| Strategy | `IAlertChannel` | Adicionar alerta Telegram/SMS = adicionar uma classe |
-| Repository | `IMatchHistoryRepository` | JSONL agora, SQLite depois — uma linha no DI |
-| Observer | `ISnapshotStore.SnapshotUpdated` | Detecção dispara instantaneamente na atualização |
-| Options | `IOptionsMonitor<T>` | Intervalos de polling recarregáveis a quente via `appsettings.json` |
+No painel aparecem:
+
+- jogos ao vivo;
+- dados separados por fonte;
+- divergências detectadas;
+- alertas em tempo real;
+- resultados de apoio do Google;
+- estado de verificação manual quando o usuário marca uma divergência como conferida.
 
 ---
 
-### Fontes de dados
+## O que acontece quando aparece um alerta
 
-| Fonte | Eventos (gols, cartões) | Placar | Método | Custo |
-|---|---|---|---|---|
-| **Bet365** (via BetsAPI) | ✅ marcadores, cartões | ✅ | API licenciada — `api.b365api.com` | Pago |
-| **SofaScore** | ✅ incidentes completos | ✅ | API interna — `api.sofascore.com/api/v1` | Grátis |
-| **API-Football** | ✅ eventos completos | ✅ | API oficial — `v3.football.api-sports.io` | $19/mês (Pro) |
-| **365Scores** | ❌ apenas placar | ✅ | API interna — `webws.365scores.com/web/` | Grátis |
-| **Google** | ✅ snippets de busca ao vivo | — | Custom Search JSON API — `googleapis.com` | Grátis (100/dia) |
+O alerta não significa automaticamente que uma fonte está errada. Ele significa que existe uma diferença que merece atenção.
 
-### Papel do Google no dashboard
+O fluxo esperado é:
 
-O Google não expõe dados estruturados de partida, mas seus resultados de busca funcionam como **painel de verificação integrado**: para cada partida ao vivo monitorada, o sistema busca automaticamente os top 3 resultados e os exibe dentro de cada card de divergência. O analista vê título, snippet e link — sem sair do dashboard.
+1. O painel toca um aviso.
+2. O usuário abre o card da divergência.
+3. O usuário vê quais fontes estão divergindo.
+4. O usuário confere replay, tempo real, Google ou outra fonte confiável.
+5. O usuário decide manualmente se precisa agir.
 
-A ação manual (abrir replay, confirmar evento) continua sendo feita pelo analista. A **Bet365** é a plataforma onde ele age após confirmar.
-
-> **Limite do free tier:** 100 buscas/dia. O intervalo padrão foi ajustado para 300s para reduzir consumo durante jogos. Com muitas partidas simultâneas, ainda é necessário monitorar quota. Acima do free tier, o Google cobra por buscas adicionais.
+Esse ponto é importante: o SportsMonitor não substitui o julgamento humano. Ele organiza os sinais para que a pessoa não precise procurar tudo do zero.
 
 ---
 
-### Regras de divergência implementadas
+## Modo demonstração
 
-| Regra | Severidade | O que detecta |
-|---|---|---|
-| `ScoreMismatchRule` | Crítica | Fontes reportam placares diferentes |
-| `GoalScorerMismatchRule` | Crítica | Gol no mesmo minuto atribuído a jogadores diferentes |
-| `MissingGoalRule` | Alta | Uma fonte tem um gol que a outra não tem |
-| `CardMismatchRule` | Alta | Cartão amarelo ou vermelho atribuído a jogador diferente |
-| `MatchStatusMismatchRule` | Média | Uma fonte diz ao vivo, outra diz encerrado/suspenso |
+O projeto tem um modo demo para mostrar o funcionamento sem depender de APIs reais.
+
+Quando o modo demo está ligado, o sistema cria partidas simuladas e divergências de exemplo, como:
+
+- placar atrasado em uma fonte;
+- gol aparecendo em uma fonte antes da outra;
+- jogador do gol diferente;
+- cartão divergente;
+- mudança de status da partida.
+
+Isso ajuda em apresentações, testes e validação do painel.
+
+Para uso real, o modo demo deve ficar desligado.
 
 ---
 
-### Como rodar localmente (modo debug / desenvolvimento)
+## Como rodar para testar
 
-**Requisitos:** .NET 10 SDK · Node 18+ · Angular CLI 21+
+Esta parte é para quem vai abrir o projeto em ambiente de desenvolvimento.
 
-#### Passo a passo
+Requisitos:
 
-**1. Clone e instale dependências do Angular**
-```bash
-git clone https://github.com/ViniciusRobero/sports-monitor.git
-cd sports-monitor/src/SportsMonitor.Web
+- .NET 10 SDK
+- Node.js 18 ou superior
+- Angular CLI
+
+Instale as dependências do painel:
+
+```powershell
+cd src\SportsMonitor.Web
 npm install
 ```
 
-**2. Habilite pelo menos um provedor em `src/SportsMonitor.Bff/appsettings.json`**
+Rode o BFF:
 
-SofaScore e 365Scores não precisam de chave — é o mais rápido para testar:
-```json
-"SofaScore": { "Enabled": true, "PollingIntervalSeconds": 30 },
-"Scores365": { "Enabled": true, "PollingIntervalSeconds": 20 }
+```powershell
+dotnet run --project src\SportsMonitor.Bff\SportsMonitor.Bff.csproj
 ```
 
-**3. Inicie o BFF** (Terminal 1)
-```bash
-dotnet run --project src/SportsMonitor.Bff/SportsMonitor.Bff.csproj
+Rode o dashboard:
+
+```powershell
+cd src\SportsMonitor.Web
+ng serve
 ```
-Aguarde a mensagem `Now listening on: http://localhost:5000`.
 
-**4. Inicie o dashboard Angular** (Terminal 2)
-```bash
-cd src/SportsMonitor.Web && ng serve
-```
-Aguarde `Application bundle generation complete`.
+Abra:
 
-**5. Abra o dashboard**
-
-`http://localhost:4200`
-
-O dashboard conecta ao BFF via SignalR. Quando houver partidas ao vivo e uma divergência for detectada, um card aparece e um beep toca.
-
-**Para testar os endpoints REST diretamente:**
-```bash
-curl http://localhost:5000/api/matches/live
-curl http://localhost:5000/api/divergences
+```text
+http://localhost:4200
 ```
 
 ---
 
-### Modo demo (sem API keys)
+## Como rodar o agente local do SofaScore
 
-O sistema inclui um **DemoWorker** que injeta dados fictícios a cada 10 segundos para apresentações e testes. Bet365 e Google aparecem como fontes principais no dashboard, com SofaScore, 365Scores e API-Football como fontes de comparação.
+Use o agente local quando o BFF estiver em uma VM ou servidor que não consegue acessar o SofaScore diretamente.
 
-- **Flamengo × Palmeiras** — partida simulada em fases: início, cartão, gol com marcador errado na Bet365, correção, intervalo, empate atrasado na Bet365, cartão divergente e fim de jogo.
-- **Botafogo × Corinthians** — divergência rápida de resultado: em cerca de 5 segundos, Google/SofaScore/365Scores mostram 1-0 enquanto Bet365 ainda mostra 0-0.
-- **Manchester City × Liverpool** — jogo já em andamento com gols e cartão.
-- **Brasil × Argentina** — jogo sem gols com eventos disciplinares.
-- **Real Madrid × Barcelona** — clássico com gols e cartão.
+Exemplo:
 
-O mock também popula o painel do Google com snippets e links de busca por partida. O modo demo agora é opcional: ative com `"Demo": { "Enabled": true }` quando quiser apresentação sem provedores reais. Para operação real, mantenha `"Demo": { "Enabled": false }`.
+```powershell
+dotnet run --project src\SportsMonitor.LocalAgent -- --bff-url http://34.151.245.70 --interval 30
+```
 
-### Como gerar o pacote para uso sem ambiente de desenvolvimento
+O que ele faz:
+
+- busca os jogos no SofaScore usando a internet da máquina local;
+- normaliza os dados no mesmo formato do sistema;
+- envia as partidas para o BFF;
+- repete isso no intervalo configurado.
+
+---
+
+## Como gerar um pacote desktop
+
+Para gerar uma pasta pronta para uso:
 
 ```powershell
 .\publish.ps1
 ```
 
-Gera a pasta `publish\`. Para enviar ao usuário final, compacte e entregue a pasta inteira, não apenas o `.exe`, porque o shell desktop precisa do BFF publicado e dos arquivos de runtime ao lado. Execute `publish\SportsMonitor.Desktop.exe` — inicia o BFF automaticamente, aguarda ele ficar pronto e abre o dashboard. Logs em `publish\logs\bff.log`.
+Isso cria a pasta `publish\`.
+
+Para usar, execute:
+
+```text
+publish\SportsMonitor.Desktop.exe
+```
+
+O aplicativo desktop inicia o servidor local e abre o painel automaticamente.
 
 ---
 
-### Deploy Linux / GCP Compute Engine
+## O que o projeto não faz
 
-O repositório também inclui artefatos para rodar o BFF como web app em uma VM Linux:
+Para deixar o objetivo claro:
 
-> **Regra operacional:** configuração e deploy no GCP devem ser feitos via linha de comando (`gcloud`, `ssh`, `scp`/`rsync` e scripts do repositório), sem depender do Console web como caminho principal.
+- não faz apostas automaticamente;
+- não acessa conta da Bet365;
+- não tenta burlar login, captcha ou bloqueios de conta;
+- não garante que uma fonte está certa;
+- não substitui a confirmação humana;
+- não deve ser usado como única base de decisão.
 
-| Arquivo | Uso |
+Ele é uma ferramenta de monitoramento e apoio à verificação.
+
+---
+
+## Estrutura do projeto, em linguagem simples
+
+| Pasta | O que tem dentro |
 |---|---|
-| `publish-linux.sh` | Build Angular + publish self-contained `linux-x64` em `publish-linux/` |
-| `deploy.sh` | Executa build, envia `publish-linux/` para a VM e reinicia o serviço |
-| `publish-linux.ps1` | Versão PowerShell do build Linux, recomendada no Windows |
-| `setup-google-search-key.ps1` | Habilita Custom Search API, cria API key restrita e gera `appsettings.Production.json` |
-| `setup-gcp-vm.ps1` | Cria/prepara VM, firewall e Nginx via `gcloud` |
-| `deploy-gcp.ps1` | Build + upload + systemd/Nginx + restart via `gcloud compute ssh/scp` |
-| `sportsmonitor.service` | Unit file do systemd para `/opt/sportsmonitor` |
-| `nginx-sportsmonitor.conf` | Reverse proxy HTTP para `localhost:5000` + SignalR |
-
-Uso local esperado:
-
-```powershell
-.\setup-google-search-key.ps1 -ProjectId SEU_PROJECT_ID
-.\setup-gcp-vm.ps1 -ProjectId SEU_PROJECT_ID
-.\deploy-gcp.ps1 -ProjectId SEU_PROJECT_ID
-```
-
-Alternativa via shell Linux:
-
-```bash
-./publish-linux.sh
-
-VM_USER=seu_usuario VM_IP=IP_DA_VM ./deploy.sh
-```
-
-Na VM, configure as credenciais reais em `appsettings.Production.json` ou variáveis de ambiente. Esse arquivo está no `.gitignore` e não deve ser commitado.
-
-Fluxo GCP via CLI:
-
-```bash
-gcloud auth login
-gcloud config set project SEU_PROJECT_ID
-
-gcloud compute instances create sportsmonitor-vm \
-  --zone=southamerica-east1-b \
-  --machine-type=e2-small \
-  --image-family=ubuntu-2204-lts \
-  --image-project=ubuntu-os-cloud \
-  --boot-disk-size=20GB \
-  --tags=http-server,https-server
-
-gcloud compute firewall-rules create allow-sportsmonitor-http \
-  --allow=tcp:80 \
-  --target-tags=http-server
-
-gcloud compute ssh sportsmonitor-vm --zone=southamerica-east1-b
-```
+| `SportsMonitor.Bff` | O servidor que junta os dados e entrega para o painel |
+| `SportsMonitor.Web` | A tela que o usuário vê no navegador |
+| `SportsMonitor.Desktop` | O aplicativo Windows que abre o painel automaticamente |
+| `SportsMonitor.Infrastructure` | As conexões com fontes externas, como SofaScore e 365Scores |
+| `SportsMonitor.Workers` | Rotinas que buscam informações de tempos em tempos |
+| `SportsMonitor.Application` | As regras que decidem se existe divergência |
+| `SportsMonitor.Domain` | Os modelos principais do sistema |
+| `SportsMonitor.LocalAgent` | O agente local que envia dados do SofaScore para o BFF |
+| `SportsMonitor.Tests` | Testes automatizados do projeto |
 
 ---
 
-### Configuração (`src/SportsMonitor.Bff/appsettings.json`)
+## Estado atual
 
-O `appsettings.json` atual está preparado para operação real sem demo: SofaScore e 365Scores habilitados, Google habilitado com placeholders de credencial, API-Football e BetsAPI desligados. Substitua credenciais em ambiente local/produção antes de rodar:
+O projeto já tem:
 
-```json
-{
-  "Providers": {
-    "ApiFootball": {
-      "Enabled": true,
-      "PollingIntervalSeconds": 30,
-      "ApiKey": "SUA_CHAVE_API_FOOTBALL"
-    },
-    "BetsApi": {
-      "Enabled": true,
-      "PollingIntervalSeconds": 30,
-      "Token": "SEU_TOKEN_BETSAPI"
-    },
-    "SofaScore": {
-      "Enabled": true,
-      "PollingIntervalSeconds": 30
-    },
-    "Scores365": {
-      "Enabled": true,
-      "PollingIntervalSeconds": 20
-    },
-    "Google": {
-      "Enabled": true,
-      "PollingIntervalSeconds": 300,
-      "ApiKey": "SUA_CHAVE_GOOGLE",
-      "SearchEngineId": "SEU_CX_ID",
-      "ResultsPerMatch": 3
-    }
-  }
-}
-```
+- dashboard Angular;
+- BFF em .NET;
+- alertas em tempo real;
+- comparação entre fontes;
+- regras para placar, gols, cartões e status;
+- modo demonstração;
+- agente local para SofaScore;
+- empacotamento desktop;
+- testes automatizados.
 
-Para obter as credenciais do Google:
-1. Criar projeto no [Google Cloud Console](https://console.cloud.google.com) e habilitar a **Custom Search JSON API**
-2. Criar um Search Engine em [programmablesearchengine.google.com](https://programmablesearchengine.google.com) (marcar "Buscar na web inteira")
-3. Copiar a `API Key` (Google Cloud) e o `Search Engine ID` (`cx`) para o `appsettings.json`
-
----
-
-### Estrutura da solução
-
-```
-src/
-├── SportsMonitor.Domain/          # Entidades e interfaces — zero dependências externas
-├── SportsMonitor.Application/     # DivergenceEngine + 5 regras
-├── SportsMonitor.Infrastructure/  # 4 provedores, repositório JSONL, resolver, store
-├── SportsMonitor.Workers/         # 7 workers (4 polling + AlertWorker + GoogleSearchWorker + DemoWorker)
-├── SportsMonitor.Bff/             # Host ASP.NET Core — REST API + SignalR hub
-├── SportsMonitor.Web/             # Dashboard Angular 21
-├── SportsMonitor.Desktop/         # Shell WPF + WebView2
-└── SportsMonitor.Tests/           # 78 testes xUnit
-```
-
----
-
-### Restrições importantes
-
-- **Sem apostas automáticas** — o sistema alerta; o humano decide e age na Bet365
-- **Sem bypass de login** — sem resolver CAPTCHA, sem fingerprint spoofing, sem Playwright stealth
-- **Sem necessidade de nuvem** — roda inteiramente na máquina local
-- **Acesso local:** `http://localhost:5000`
-
----
-
-### Stack tecnológica
-
-| Camada | Tecnologia |
-|---|---|
-| Backend | ASP.NET Core (.NET 10) |
-| Workers | .NET `IHostedService` / `BackgroundService` |
-| Tempo real | SignalR |
-| Frontend | Angular 21 |
-| Storage | Arquivos JSONL (MVP) |
-| Shell desktop | WPF + WebView2 |
-| Testes | xUnit + FluentAssertions |
-
----
-
-## Sports Data Divergence Monitor
-
-A **local-first, desktop-first** system that monitors live football/soccer matches across multiple data sources, detects divergences in real time, and alerts the analyst with an audible sound so they can manually verify and act on Bet365.
-
-> **Status:** MVP implemented and prepared for real providers + Linux/GCP deployment. 5 providers, 5 divergence rules, Angular dashboard, WPF shell, optional demo mode. 78 tests passing.
-
----
-
-### What it does
-
-The system watches live matches simultaneously on **Bet365** (via BetsAPI), **SofaScore**, **API-Football** and **365Scores**. When the sources disagree — different goal scorer, different score, missing event, card on the wrong player, inconsistent match status — it triggers an audible alert and shows a divergence card in the dashboard.
-
-The analyst then searches for replay evidence on **Google**, confirms whether the event was real, and decides whether to act manually on **Bet365**. **The system never places bets automatically.**
-
-### Example
-
-```
-Match: Flamengo vs Palmeiras — 32'
-
-SofaScore:    Goal by Pedro
-Bet365:       Goal by Arrascaeta
-API-Football: Goal by Pedro
-
-→ CRITICAL ALERT: GoalScorerMismatch
-  SofaScore + API-Football: Pedro
-  Bet365: Arrascaeta
-  → Search on Google → confirm replay → act manually on Bet365
-```
-
----
-
-### Architecture
-
-```
-User Machine
-│
-├── Desktop Shell (WPF + WebView2)
-│   └── Auto-starts BFF and opens http://localhost:5000
-│
-├── ASP.NET Core BFF (localhost:5000)
-│   ├── REST API  GET /api/matches/live
-│   │            GET /api/divergences
-│   │            POST /api/divergences/{id}/verify
-│   ├── SignalR Hub /hubs/alerts  ←── real-time push to dashboard
-│   └── Angular Dashboard
-│
-├── .NET Worker Services (background polling)
-│   ├── ApiFootballWorker   (default 30s — official API)
-│   ├── BetsApiWorker       (default 30s — Bet365 via BetsAPI)
-│   ├── SofaScoreWorker     (default 30s — SofaScore internal API)
-│   ├── Scores365Worker     (default 20s — 365Scores internal API)
-│   ├── GoogleSearchWorker  (default 300s — Custom Search API)
-│   └── AlertWorker         (consumes divergence queue → SignalR)
-│
-├── In-Memory Snapshot Store   ← fires SnapshotUpdated on every update
-├── Divergence Engine          ← reactive, evaluates all rules on each snapshot
-│
-└── Storage (JSONL per source per day)
-    data/2026-05-27/
-      snapshots/api_football.jsonl
-      snapshots/bet365.jsonl
-      snapshots/sofascore.jsonl
-      snapshots/365scores.jsonl
-      divergences.jsonl
-```
-
-### Data sources
-
-| Source | Events (goals, cards) | Scores | Method | Cost |
-|---|---|---|---|---|
-| **Bet365** (via BetsAPI) | ✅ goal scorers, cards | ✅ | Licensed API — `api.b365api.com` | Paid |
-| **SofaScore** | ✅ full incidents | ✅ | Internal API — `api.sofascore.com/api/v1` | Free |
-| **API-Football** | ✅ full events | ✅ | Official API — `v3.football.api-sports.io` | $19/mo (Pro) |
-| **365Scores** | ❌ score only | ✅ | Internal API — `webws.365scores.com/web/` | Free |
-| **Google** | ✅ live search snippets | — | Custom Search JSON API — `googleapis.com` | Free (100/day) |
-
-Google does not expose structured match data, but its search snippets serve as an **integrated verification panel**: for each live match, the system automatically fetches the top 3 results and displays them inside each divergence card. The analyst sees title, snippet and link — without leaving the dashboard.
-
-> **Free tier limit:** 100 searches/day. The default interval is now 300s to reduce usage during live matches. With many simultaneous matches, quota still needs monitoring.
-
-### Divergence rules
-
-| Rule | Severity | Detects |
-|---|---|---|
-| `ScoreMismatchRule` | Critical | Sources report different scores |
-| `GoalScorerMismatchRule` | Critical | Goal at same minute attributed to different players |
-| `MissingGoalRule` | High | One source has a goal the other doesn't |
-| `CardMismatchRule` | High | Yellow or red card attributed to different player |
-| `MatchStatusMismatchRule` | Medium | One source says live, another says finished/postponed |
-
-### Running locally (debug / dev mode)
-
-**Requirements:** .NET 10 SDK · Node 18+ · Angular CLI 21+
-
-**1. Install Angular dependencies**
-```bash
-cd src/SportsMonitor.Web && npm install
-```
-
-**2. Enable at least one provider** in `src/SportsMonitor.Bff/appsettings.json`
-
-SofaScore and 365Scores require no API key — fastest way to test:
-```json
-"SofaScore": { "Enabled": true, "PollingIntervalSeconds": 30 },
-"Scores365": { "Enabled": true, "PollingIntervalSeconds": 20 }
-```
-
-**3. Start the BFF** (Terminal 1)
-```bash
-dotnet run --project src/SportsMonitor.Bff/SportsMonitor.Bff.csproj
-```
-
-**4. Start the Angular dashboard** (Terminal 2)
-```bash
-cd src/SportsMonitor.Web && ng serve
-```
-
-**5. Open** `http://localhost:4200`
-
-### Building a distributable package
-
-```powershell
-.\publish.ps1
-```
-
-Outputs a `publish\` folder. Zip and deliver the entire folder, not only the `.exe`, because the desktop shell needs the published BFF and runtime files beside it. Run `publish\SportsMonitor.Desktop.exe` — it auto-starts the BFF and opens the dashboard.
-
-### Important constraints
-
-- **No automated betting** — the system alerts; the human decides and acts on Bet365
-- **No login bypass** — no CAPTCHA solving, no fingerprint spoofing
-- **No cloud required** — runs entirely on the local machine
+Última validação local: build completo e 78 testes passando.

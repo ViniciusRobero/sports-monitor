@@ -88,44 +88,52 @@ try {
         $productionConfigToUpload = $localProductionConfig
     }
 
+    $homeDir = "/home/$remoteUser"
+
     Write-Host "==> Uploading app package..." -ForegroundColor Cyan
-    Invoke-Gcloud compute scp --recurse $publishDir "${InstanceName}:~/sportsmonitor-upload" `
+    # pscp always nests source dir inside an existing destination dir,
+    # so we create the parent upload dir; the contents land in sportsmonitor-upload/publish-linux/
+    Invoke-Gcloud compute ssh $InstanceName --zone $Zone --project $ProjectId --command "rm -rf $homeDir/sportsmonitor-upload && mkdir -p $homeDir/sportsmonitor-upload"
+    Invoke-Gcloud compute scp --recurse $publishDir "${InstanceName}:${homeDir}/sportsmonitor-upload" `
         --zone $Zone `
         --project $ProjectId
 
     Write-Host "==> Uploading service and Nginx config..." -ForegroundColor Cyan
-    Invoke-Gcloud compute scp $serviceFile "${InstanceName}:~/sportsmonitor.service" `
+    Invoke-Gcloud compute scp $serviceFile "${InstanceName}:${homeDir}/sportsmonitor.service" `
         --zone $Zone `
         --project $ProjectId
-    Invoke-Gcloud compute scp $nginxConf "${InstanceName}:~/nginx-sportsmonitor.conf" `
+    Invoke-Gcloud compute scp $nginxConf "${InstanceName}:${homeDir}/nginx-sportsmonitor.conf" `
         --zone $Zone `
         --project $ProjectId
 
     if ($productionConfigToUpload) {
         Write-Host "==> Uploading production appsettings..." -ForegroundColor Cyan
-        Invoke-Gcloud compute scp $productionConfigToUpload "${InstanceName}:~/appsettings.Production.json" `
+        Invoke-Gcloud compute scp $productionConfigToUpload "${InstanceName}:${homeDir}/appsettings.Production.json" `
             --zone $Zone `
             --project $ProjectId
     } else {
         Write-Host "==> No production config uploaded. Existing remote config will be kept if present." -ForegroundColor Yellow
     }
 
-    $remoteCommand = @"
+    $installScript = @"
+#!/bin/bash
 set -e
 sudo mkdir -p '$AppDir'
 sudo find '$AppDir' -mindepth 1 -maxdepth 1 -exec rm -rf {} +
-sudo cp -a "`$HOME/sportsmonitor-upload/." '$AppDir/'
-if [ -f "`$HOME/appsettings.Production.json" ]; then sudo cp "`$HOME/appsettings.Production.json" '$AppDir/'; fi
+sudo cp -a "$homeDir/sportsmonitor-upload/publish-linux/." '$AppDir/'
+if [ -f "$homeDir/appsettings.Production.json" ]; then sudo cp "$homeDir/appsettings.Production.json" '$AppDir/'; fi
 sudo chmod +x '$AppDir/SportsMonitor.Bff'
-sudo chmod +x '$AppDir/playwright.sh'
+sudo chmod +x '$AppDir/.playwright/node/linux-x64/node'
 sudo mkdir -p '$AppDir/data'
 sudo chown -R '${remoteUser}:${remoteUser}' '$AppDir'
+PLAYWRIGHT_NODE='$AppDir/.playwright/node/linux-x64/node'
+PLAYWRIGHT_CLI='$AppDir/.playwright/package/cli.js'
 echo "==> Installing Playwright Chromium system dependencies..."
-sudo '$AppDir/playwright.sh' install-deps chromium
+sudo `$PLAYWRIGHT_NODE `$PLAYWRIGHT_CLI install-deps chromium
 echo "==> Downloading Chromium browser binary..."
-PLAYWRIGHT_BROWSERS_PATH='$AppDir/.playwright' '$AppDir/playwright.sh' install chromium
-sudo mv "`$HOME/sportsmonitor.service" /etc/systemd/system/sportsmonitor.service
-sudo mv "`$HOME/nginx-sportsmonitor.conf" /etc/nginx/sites-available/sportsmonitor
+PLAYWRIGHT_BROWSERS_PATH='$AppDir/.playwright' `$PLAYWRIGHT_NODE `$PLAYWRIGHT_CLI install chromium
+sudo mv "$homeDir/sportsmonitor.service" /etc/systemd/system/sportsmonitor.service
+sudo mv "$homeDir/nginx-sportsmonitor.conf" /etc/nginx/sites-available/sportsmonitor
 sudo ln -sfn /etc/nginx/sites-available/sportsmonitor /etc/nginx/sites-enabled/sportsmonitor
 sudo rm -f /etc/nginx/sites-enabled/default
 sudo nginx -t
@@ -135,11 +143,20 @@ sudo systemctl restart sportsmonitor
 sudo systemctl restart nginx
 "@
 
+    $installScriptPath = Join-Path $tempDir "install.sh"
+    # UTF-8 without BOM — required for bash shebang on Linux
+    [System.IO.File]::WriteAllText($installScriptPath, $installScript, [System.Text.UTF8Encoding]::new($false))
+
+    Write-Host "==> Uploading install script..." -ForegroundColor Cyan
+    Invoke-Gcloud compute scp $installScriptPath "${InstanceName}:${homeDir}/install.sh" `
+        --zone $Zone `
+        --project $ProjectId
+
     Write-Host "==> Installing and restarting app on VM..." -ForegroundColor Cyan
     Invoke-Gcloud compute ssh $InstanceName `
         --zone $Zone `
         --project $ProjectId `
-        --command $remoteCommand
+        --command "bash $homeDir/install.sh"
 
     $ip = (& gcloud compute instances describe $InstanceName `
         --zone $Zone `

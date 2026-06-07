@@ -1,3 +1,8 @@
+﻿## Latest Production Note - 2026-06-07
+
+SportsMonitor is deployed at `http://34.151.245.70/` on GCP project `sportsmonitor-prod`, VM `sportsmonitor-vm`, zone `southamerica-east1-b`. The VM disk was cleaned after 365Scores history filled the 20GB disk; `Scores365Provider` now does not persist `RawJson`, keeping `/opt/sportsmonitor/data` small. Production validation: HTTP 200, `/api/matches/live` returns live groups, `sportsmonitor` and `nginx` active, disk about 20% used. User wants GCP/account focus on SportsMonitor only; no active Compute/Run/SQL/GKE/Functions resources were found in other accessible projects, only old buckets that were not deleted automatically because broad bucket deletion is irreversible.
+
+---
 # Project Context - Sports Data Divergence Monitor
 
 ## 1. Project Summary
@@ -20,21 +25,21 @@ Important continuity rule: because this project may move between different AI mo
 
 ## 2. Current Phase
 
-**Phase 01 — Data Source Research: COMPLETE**
-**Phase 03 — Technical Architecture: COMPLETE** (Phase 02 requirements já capturados em PHASE_02_PLUS_PLANNING_UPDATE.md)
+**Phase 01 â€” Data Source Research: COMPLETE**
+**Phase 03 â€” Technical Architecture: COMPLETE** (Phase 02 requirements jÃ¡ capturados em PHASE_02_PLUS_PLANNING_UPDATE.md)
 
-**Phase 04 — MVP Implementation: COMPLETE**
-**Phase 08 — Local Packaging: COMPLETE**
-**Phase 09 — Real Providers + Linux Deploy Prep: IMPLEMENTED / MANUAL VALIDATION PENDING**
+**Phase 04 â€” MVP Implementation: COMPLETE**
+**Phase 08 â€” Local Packaging: COMPLETE**
+**Phase 09 â€” Real Providers + Linux Deploy Prep: IMPLEMENTED / MANUAL VALIDATION PENDING**
 
-### O que está implementado (2026-06-07)
+### O que estÃ¡ implementado (2026-06-07)
 
 - Domain, Application, Infrastructure completos
 - 5 providers: SofaScore, 365Scores, ApiFootball, BetsAPI, Google Custom Search
-- 5 regras de divergência: ScoreMismatch, GoalScorerMismatch, MissingGoal, CardMismatch, MatchStatusMismatch
-- DemoWorker: modo demo rico sem API keys, com Bet365 e Google como fontes principais, 5 partidas mockadas, divergência rápida de resultado em ~5s e Flamengo x Palmeiras avançando em fases a cada 10s. Demo agora é opcional; operação real usa `Demo.Enabled: false`
+- 5 regras de divergÃªncia: ScoreMismatch, GoalScorerMismatch, MissingGoal, CardMismatch, MatchStatusMismatch
+- DemoWorker: modo demo rico sem API keys, com Bet365 e Google como fontes principais, 5 partidas mockadas, divergÃªncia rÃ¡pida de resultado em ~5s e Flamengo x Palmeiras avanÃ§ando em fases a cada 10s. Demo agora Ã© opcional; operaÃ§Ã£o real usa `Demo.Enabled: false`
 - WPF + WebView2 shell com wait-for-ready e logging em arquivo
-- Dashboard Angular com botão de refresh manual, painéis por fonte, Google na segunda coluna, filtros por texto/status, painel global de alertas, toggle de som, "Ignorar todos" e layout mobile melhorado
+- Dashboard Angular com botÃ£o de refresh manual, painÃ©is por fonte, Google na segunda coluna, filtros por texto/status, painel global de alertas, toggle de som, "Ignorar todos" e layout mobile melhorado
 - publish.ps1: pacote single-exe para Windows
 - `publish-linux.sh`, `deploy.sh`, `sportsmonitor.service` e `nginx-sportsmonitor.conf` para deploy Linux/GCP
 - `publish-linux.ps1`, `setup-gcp-vm.ps1` e `deploy-gcp.ps1` para fluxo GCP via CLI no Windows sem depender de WSL/rsync
@@ -43,20 +48,20 @@ Important continuity rule: because this project may move between different AI mo
 - Delay sequencial de 200ms no SofaScore incidents para reduzir risco de rate limit
 - 78 testes passando
 
-### Pendências
+### PendÃªncias
 - Criar/fornecer Google Custom Search API key e Search Engine ID reais
-- Search Engine ID recuperado de histórico local: `25c69f98aa10d4ba0`. API key antiga encontrada no histórico falhou com 403; criar nova key via `setup-google-search-key.ps1` no projeto GCP escolhido.
+- Search Engine ID recuperado de histÃ³rico local: `25c69f98aa10d4ba0`. API key antiga encontrada no histÃ³rico falhou com 403; criar nova key via `setup-google-search-key.ps1` no projeto GCP escolhido.
 - Provider token/status check em 2026-06-07:
   - SofaScore external API docs check em 2026-06-07: usuario compartilhou `https://api.sofascore.com/api/docs/external#tag/Betting-Odds/operation/get_sofascore_app_external_api_v1_bettingodds_list`. A documentacao externa, `openapi.json`, `swagger.json` e o provavel endpoint `https://api.sofascore.com/api/v1/betting-odds/list` retornaram HTTP 403 via CLI. A operacao citada e de Betting Odds, nao de placar/incidentes ao vivo. Nao assumir formato de token/header ate obter o Swagger `Authorize` ou um cURL gerado pela documentacao.
-  - SofaScore não usa token no código, mas o endpoint `https://api.sofascore.com/api/v1/sport/football/events/live` retornou HTTP 403 nos testes locais mesmo com headers de navegador. Isso indica bloqueio/anti-bot/IP, não falta de token.
-  - 365Scores não usa token e respondeu HTTP 200 via `curl.exe` no endpoint `/web/games/?...&onlyLive=true`.
-  - Google usa API key + Search Engine ID. `SearchEngineId=25c69f98aa10d4ba0` está disponível; API key antiga falhou com 403 e deve ser recriada via CLI.
-- Latency requirement em 2026-06-07: usuário quer atualização dos dados no tempo mais rápido possível. Perfil agressivo atual: 365Scores 10s, SofaScore 10s se o acesso funcionar, Google 300s por quota/custo. Google é fonte de verificação, não placar estruturado de baixa latência. Para sub-10s confiável, avaliar fonte paga/licenciada.
+  - SofaScore nÃ£o usa token no cÃ³digo, mas o endpoint `https://api.sofascore.com/api/v1/sport/football/events/live` retornou HTTP 403 nos testes locais mesmo com headers de navegador. Isso indica bloqueio/anti-bot/IP, nÃ£o falta de token.
+  - 365Scores nÃ£o usa token e respondeu HTTP 200 via `curl.exe` no endpoint `/web/games/?...&onlyLive=true`.
+  - Google usa API key + Search Engine ID. `SearchEngineId=25c69f98aa10d4ba0` estÃ¡ disponÃ­vel; API key antiga falhou com 403 e deve ser recriada via CLI.
+- Latency requirement em 2026-06-07: usuÃ¡rio quer atualizaÃ§Ã£o dos dados no tempo mais rÃ¡pido possÃ­vel. Perfil agressivo atual: 365Scores 10s, SofaScore 10s se o acesso funcionar, Google 300s por quota/custo. Google Ã© fonte de verificaÃ§Ã£o, nÃ£o placar estruturado de baixa latÃªncia. Para sub-10s confiÃ¡vel, avaliar fonte paga/licenciada.
 - Criar VM no Compute Engine via CLI (`gcloud compute instances create`), instalar runtime/infra e configurar systemd + Nginx via SSH
-- Criar `appsettings.Production.json` na VM ou variáveis de ambiente com credenciais reais via linha de comando
-- Validar em horário com partidas ao vivo se SofaScore e 365Scores agrupam corretamente via `FuzzyMatchResolver`
+- Criar `appsettings.Production.json` na VM ou variÃ¡veis de ambiente com credenciais reais via linha de comando
+- Validar em horÃ¡rio com partidas ao vivo se SofaScore e 365Scores agrupam corretamente via `FuzzyMatchResolver`
 - Validar real BetsAPI payloads, especialmente campo `LA`, se/ quando BetsAPI entrar no escopo
-- API-Football key ($19/mês — api-sports.io), se a fonte oficial/comercial for habilitada
+- API-Football key ($19/mÃªs â€” api-sports.io), se a fonte oficial/comercial for habilitada
 
 ---
 
@@ -65,9 +70,9 @@ Important continuity rule: because this project may move between different AI mo
 - **Desktop-first**: Windows desktop app (WPF/WinForms shell + WebView2) that is trivially migratable to web
 - **Local-first execution**: runs on the user's machine, no mandatory cloud infrastructure
 - **Local server model**: ASP.NET Core at `http://localhost:5000`, Angular dashboard served as static files
-- **Easy web migration**: core is already a standard ASP.NET Core app — deploy to server = web app
+- **Easy web migration**: core is already a standard ASP.NET Core app â€” deploy to server = web app
 - **.NET stack**: ASP.NET Core, .NET Worker Services, SignalR, SQLite, Angular
-- **Historical data**: all source readings must be persisted locally (SQLite) — one row per poll per source, full JSON payload + parsed fields
+- **Historical data**: all source readings must be persisted locally (SQLite) â€” one row per poll per source, full JSON payload + parsed fields
 - Prefer official APIs and commercial/licensed providers
 - Do not automate betting, do not bypass captchas, anti-bot protections, login restrictions, paywalls, fingerprinting, or access controls
 
@@ -77,7 +82,7 @@ Important continuity rule: because this project may move between different AI mo
 
 1. System monitors a live match
 2. Compares data from 365Scores, SofaScore, Google, and official competition website
-3. If divergence detected → triggers audible alert ("apito")
+3. If divergence detected â†’ triggers audible alert ("apito")
 4. Dashboard shows exactly where the divergence occurred
 5. Analyst manually opens the relevant match/source pages
 6. Analyst manually searches for replay/video evidence
@@ -85,7 +90,7 @@ Important continuity rule: because this project may move between different AI mo
 8. Analyst manually decides whether to act in the betting platform
 9. Betting action is manual and depends on available bookmaker limit
 
-The system supports this operation — it does **not** replace it.
+The system supports this operation â€” it does **not** replace it.
 
 ---
 
@@ -95,9 +100,9 @@ The system supports this operation — it does **not** replace it.
 
 | Source | Role | Access | Status |
 |---|---|---|---|
-| SofaScore | Primary comparison | API interna `api.sofascore.com/api/v1` | **Researched** — viável |
-| 365Scores | Primary comparison | API interna `webws.365scores.com/web/` | **Researched** — viável |
-| Google | Primary verification | Custom Search JSON API + mock de snippets no demo | **Integrado** — painel de verificação no dashboard |
+| SofaScore | Primary comparison | API interna `api.sofascore.com/api/v1` | **Researched** â€” viÃ¡vel |
+| 365Scores | Primary comparison | API interna `webws.365scores.com/web/` | **Researched** â€” viÃ¡vel |
+| Google | Primary verification | Custom Search JSON API + mock de snippets no demo | **Integrado** â€” painel de verificaÃ§Ã£o no dashboard |
 | Official competition website | **Preferred reference/truth** | Via APIs comerciais (API-Football) | Via aggregators |
 
 ### Reference source rule
@@ -106,7 +111,7 @@ When available: **Official competition website = preferred truth/reference sourc
 
 If official source is delayed/missing/inconsistent: divergence is marked for manual verification.
 
-### Access strategy (decided 2026-05-26 — RESOLVED)
+### Access strategy (decided 2026-05-26 â€” RESOLVED)
 
 **SofaScore:** `GET https://api.sofascore.com/api/v1/sport/football/events/live` + `/event/{id}/incidents`. User-Agent browser + 25-30s polling. Sem auth.
 
@@ -114,9 +119,9 @@ If official source is delayed/missing/inconsistent: divergence is marked for man
 
 **365Scores:** `GET https://webws.365scores.com/web/game/?appTypeId=5&langId=31&timezoneName=America/Sao_Paulo&userCountryId=-1&gameId={id}`. Sem auth.
 
-**Google:** Não há endpoint público de live score estruturado. O MVP usa Google Custom Search JSON API para snippets/links de verificação, e o modo demo injeta resultados mockados por partida.
+**Google:** NÃ£o hÃ¡ endpoint pÃºblico de live score estruturado. O MVP usa Google Custom Search JSON API para snippets/links de verificaÃ§Ã£o, e o modo demo injeta resultados mockados por partida.
 
-**Boundary:** dados públicos apenas, sem login bypass, sem CAPTCHA solving, sem fingerprint spoofing.
+**Boundary:** dados pÃºblicos apenas, sem login bypass, sem CAPTCHA solving, sem fingerprint spoofing.
 
 Detalhes completos: `PHASE_01_COMPARISON_SOURCES_RESEARCH.md`
 
@@ -129,7 +134,7 @@ Backend:     ASP.NET Core (.NET 8+)
 Workers:     .NET Worker Services (IHostedService)
 Dashboard:   Angular (served by ASP.NET Core as static files)
 Real-time:   SignalR
-Database:    SQLite (MVP) → PostgreSQL if needed
+Database:    SQLite (MVP) â†’ PostgreSQL if needed
 Desktop:     WPF or WinForms host + WebView2 (thin shell)
 Packaging:   Single-file .exe or MSIX installer (Phase 08)
 Local URL:   http://localhost:5000
@@ -142,12 +147,12 @@ Optional LAN: http://192.168.x.x:5000
 
 | File | Purpose |
 |---|---|
-| `PHASE_01_DATA_SOURCE_RESEARCH.md` | Phase 01 research document — templates, criteria, competition list (63+1) |
+| `PHASE_01_DATA_SOURCE_RESEARCH.md` | Phase 01 research document â€” templates, criteria, competition list (63+1) |
 | `PHASE_01_RESEARCH_RESULTS.md` | Phase 01 results: APIs, odds APIs, live score apps, bookmakers |
 | `PHASE_01_OFFICIAL_SITES_RESEARCH.md` | Phase 01 results: 63 official competition websites |
-| `PHASE_01_COMPARISON_SOURCES_RESEARCH.md` | **SofaScore + 365Scores + Google endpoints**: endpoints internos, schema histórico JSONL, estratégia .NET |
+| `PHASE_01_COMPARISON_SOURCES_RESEARCH.md` | **SofaScore + 365Scores + Google endpoints**: endpoints internos, schema histÃ³rico JSONL, estratÃ©gia .NET |
 | `PHASE_02_PLUS_PLANNING_UPDATE.md` | **Key requirements doc**: operational workflow, sources, World Cup, phase roadmap, desktop-first |
-| `PHASE_03_TECHNICAL_ARCHITECTURE.md` | **Arquitetura técnica aprovada**: solution structure, design patterns, workers, DI, fluxo completo |
+| `PHASE_03_TECHNICAL_ARCHITECTURE.md` | **Arquitetura tÃ©cnica aprovada**: solution structure, design patterns, workers, DI, fluxo completo |
 | `PROJECT_CONTEXT.md` | Current project state and AI handoff file |
 | `/ai-notes/SESSION_LOG.md` | Chronological log of research/implementation sessions |
 | `/ai-notes/NEXT_STEPS.md` | Immediate next tasks |
@@ -174,7 +179,7 @@ Optional LAN: http://192.168.x.x:5000
 | 2026-05-26 | Audible alert ("apito") is MVP-mandatory | Confirmed by Josias via WhatsApp |
 | 2026-05-26 | Manual verification workflow required in dashboard | Analyst must record replay links, notes, confirmation status |
 | 2026-05-26 | Official competition website = preferred reference source | Confirmed by Josias as the truth/reference |
-| 2026-05-26 | FIFA World Cup 2026 added as competition #64, Very High priority | Tournament June 11–July 19 2026; 48 teams, 104 matches |
+| 2026-05-26 | FIFA World Cup 2026 added as competition #64, Very High priority | Tournament June 11â€“July 19 2026; 48 teams, 104 matches |
 
 ---
 
@@ -184,10 +189,10 @@ Optional LAN: http://192.168.x.x:5000
 |---|---|---|
 | Sports data APIs | **Done** | API-Football (best MVP), Sportmonks (alternative), football-data.org (secondary) |
 | Odds APIs | **Done** | The Odds API ($29-99/mo), BetsAPI (Bet365 live+suspension) |
-| Live score apps | **Done** | All excluded as direct sources — no official APIs |
+| Live score apps | **Done** | All excluded as direct sources â€” no official APIs |
 | Bookmakers | **Done** | Betfair Exchange (free API), others via BetsAPI/The Odds API |
 | Official competition websites (63) | **Done** | None have public API; all depend on commercial APIs; OpenLigaDB (Bundesliga) is the only exception |
-| 365Scores | **Done** | API interna `webws.365scores.com/web/` integrada como comparação |
+| 365Scores | **Done** | API interna `webws.365scores.com/web/` integrada como comparaÃ§Ã£o |
 | FIFA.com (World Cup 2026) | **Pending** | Competition #64; needs source profile before real-data implementation |
 
 ---
@@ -200,8 +205,8 @@ Optional LAN: http://192.168.x.x:5000
 | 2 | BetsAPI | Bet365 live odds + suspension status | Verify pricing |
 | 3 | The Odds API | Odds aggregation (multiple bookmakers) | $29-99/mo |
 | 4 | Betfair Exchange API | Live exchange odds + market status | Free |
-| 5 | Sportmonks | Alternative/backup sports data | €129/mo |
-| 6 | football-data.org | Supplementary (Brasileirão free) | €0-29/mo |
+| 5 | Sportmonks | Alternative/backup sports data | â‚¬129/mo |
+| 6 | football-data.org | Supplementary (BrasileirÃ£o free) | â‚¬0-29/mo |
 | 7 | OpenLigaDB | Bundesliga/2.Bundesliga/DFB-Pokal free | Free |
 | 8 | API Futebol | Brazilian football supplement (evaluate) | TBD |
 
@@ -212,7 +217,7 @@ Optional LAN: http://192.168.x.x:5000
 ## 11. Competition Scope (64 competitions)
 
 - 63 competitions researched in Phase 01 (see `PHASE_01_DATA_SOURCE_RESEARCH.md`)
-- Competition #64: **FIFA World Cup 2026** — Very High priority
+- Competition #64: **FIFA World Cup 2026** â€” Very High priority
 
 | # | Competition | Official URL | Priority |
 |---:|---|---|---|
@@ -357,8 +362,9 @@ Before doing any work:
 4. Check `/ai-notes/NEXT_STEPS.md` for immediate tasks.
 5. MVP, local packaging, real-provider configuration, frontend UX updates, and Linux/GCP deploy prep are implemented; next work should focus on real credentials, VM deploy, live-match validation, and source hardening.
 6. The app is desktop-first (.NET, WPF/WinForms + WebView2), but architecturally web-migratable.
-7. No automated betting — ever.
+7. No automated betting â€” ever.
 8. GCP configuration and deployment must be done via command line, not via Console web as the primary path.
 9. Production changes should follow the documented release flow: correction -> tests -> code review -> commit -> GCP publication -> validation -> handoff update.
 10. Store important user-shared information in repository handoff files whenever models/agents may change; do not rely only on conversation history.
 11. Update this file before ending the session.
+

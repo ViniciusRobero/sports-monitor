@@ -41,14 +41,14 @@ public class Scores365Provider : IMatchDataProvider
             return [];
 
         return games.EnumerateArray()
-            .Where(g => IsSoccer(g) && IsLive(g))
-            .Select(g => MapGame(g, json))
+            .Where(IsSoccer)
+            .Select(MapGame)
             .Where(m => m is not null)
             .Cast<NormalizedMatch>()
             .ToList();
     }
 
-    private NormalizedMatch? MapGame(JsonElement game, string rawJson)
+    private NormalizedMatch? MapGame(JsonElement game)
     {
         if (!game.TryGetProperty("homeCompetitor", out var home) ||
             !game.TryGetProperty("awayCompetitor", out var away))
@@ -75,13 +75,12 @@ public class Scores365Provider : IMatchDataProvider
             kickOff, homeScore, awayScore,
             MatchStatus.Live,
             [],     // 365Scores does not expose individual events — score-only source
-            Name, DateTime.UtcNow, rawJson
+            Name, DateTime.UtcNow
         );
     }
 
     private static bool IsSoccer(JsonElement game) =>
         game.TryGetProperty("sportId", out var s) && s.GetInt32() == 1;
 
-    private static bool IsLive(JsonElement game) =>
-        game.TryGetProperty("statusGroup", out var s) && s.GetInt32() == 1;
+    // statusGroup 1 = scheduled/pre-match (filtered by onlyLive=true in the request URL)
 }

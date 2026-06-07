@@ -1,8 +1,39 @@
+﻿## Latest Production Validation - 2026-06-07
+
+- URL: `http://34.151.245.70/`
+- Dashboard returned HTTP 200.
+- `/api/matches/live` returned live match groups.
+- Remote services: `sportsmonitor` active, `nginx` active.
+- VM disk was cleaned from full disk to about 20% used.
+- 365Scores history bloat was fixed by no longer persisting `RawJson` for that provider.
+- After several polling cycles, `/opt/sportsmonitor/data/.../365scores.jsonl` stayed around hundreds of KB instead of GB.
+- Keep watching `/opt/sportsmonitor/data` after future provider changes.
 # Next Steps
 
-## Current Status: Real Providers + Deploy Prep Implemented
+## Current Status: GCP DEPLOYED â€” acessÃ­vel em http://34.151.245.70/
 
 Last updated: 2026-06-07
+
+### GCP Details
+
+| Campo | Valor |
+|---|---|
+| Project ID | `sportsmonitor-prod` |
+| VM | `sportsmonitor-vm` |
+| Zone | `southamerica-east1-b` |
+| IP Externo | `34.151.245.70` |
+| URL | **http://34.151.245.70/** |
+| Billing Account | `01FE90-8618C8-3CEE8F` |
+
+Re-deploy (apÃ³s qualquer mudanÃ§a):
+```powershell
+.\deploy-gcp.ps1 -ProjectId sportsmonitor-prod
+```
+
+Ver logs ao vivo:
+```powershell
+gcloud compute ssh sportsmonitor-vm --zone southamerica-east1-b --project sportsmonitor-prod --command "sudo journalctl -u sportsmonitor -f"
+```
 
 The MVP is implemented, locally packaged, and now prepared for real-provider operation and Linux/GCP deployment.
 
@@ -11,7 +42,7 @@ Continuity rule: this project may move between AI models. Store important user-s
 Release process rule: production work must follow `ai-notes/RELEASE_WORKFLOW.md`: correction -> tests -> code review -> commit -> GCP publication -> production validation -> handoff update.
 
 Provider token/status check:
-- SofaScore: **FIXED** — migrated to Microsoft.Playwright 1.60.0 (headless Chromium). HTTP 403 was TLS fingerprinting of .NET HttpClient; requests now run inside real Chrome process via page.EvaluateAsync fetch(). Requires `playwright install chromium` on first run.
+- SofaScore: **FIXED** â€” migrated to Microsoft.Playwright 1.60.0 (headless Chromium). HTTP 403 was TLS fingerprinting of .NET HttpClient; requests now run inside real Chrome process via page.EvaluateAsync fetch(). Requires `playwright install chromium` on first run.
 - 365Scores: no token required; current local `curl.exe` test returned HTTP 200.
 - Google: requires API key + Search Engine ID. Search Engine ID is `25c69f98aa10d4ba0`; old API key failed with 403, so create a fresh key with `setup-google-search-key.ps1`.
 
@@ -41,48 +72,28 @@ Completed:
 
 ## Immediate Tasks
 
-0. Install Playwright Chromium locally (one-time, Windows dev machine):
+1. **Validar SofaScore em produÃ§Ã£o**: Abrir `http://34.151.245.70/` durante uma janela de jogos ao vivo e confirmar que a coluna SofaScore aparece com partidas (Playwright via headless Chrome).
+2. **Instalar Playwright localmente** (dev machine, one-time):
    ```powershell
-   dotnet tool install --global Microsoft.Playwright.CLI
-   playwright install chromium
+   & src\SportsMonitor.Bff\bin\Debug\net10.0\playwright.ps1 install chromium
    ```
-   Then test: `dotnet run --project src\SportsMonitor.Bff` and watch logs for SofaScore polling.
-
-1. Confirm the GCP `ProjectId`. Search Engine ID is already known: `25c69f98aa10d4ba0`. The old API key found in local history failed with 403, so create a new key via `setup-google-search-key.ps1`.
-2. Create/prepare the Compute Engine VM via CLI:
-   - Ubuntu 22.04 LTS
-   - HTTP traffic allowed
-   - .NET 10 ASP.NET Core runtime or self-contained binary support
-   - Nginx installed
-3. Create production config on the VM as `appsettings.Production.json` or environment variables:
-   - `Providers__Google__ApiKey`
-   - `Providers__Google__SearchEngineId`
-   - keep `Demo__Enabled=false`
-4. Install `sportsmonitor.service` on the VM and replace `VM_USER` with the real Linux user.
-5. Install `nginx-sportsmonitor.conf` in Nginx and enable it.
-6. Run deploy from local machine:
-
-```bash
-VM_USER=seu_usuario VM_IP=IP_DA_VM ./deploy.sh
-```
-
-7. Smoke test `http://IP_DA_VM/`.
-8. During live matches, validate:
-   - SofaScore and 365Scores columns receive real matches
-   - `FuzzyMatchResolver` groups the same match across sources
-   - Google snippets appear in the Google column
-   - divergence alert sound/toggle/panel/actions work
-   - mobile layout is usable
+3. **Google API key** (opcional â€” Google fica desligado atÃ© ter a key):
+   ```powershell
+   .\setup-google-search-key.ps1 -ProjectId sportsmonitor-prod
+   ```
+4. Durante jogos ao vivo, validar:
+   - SofaScore e 365Scores recebem partidas reais
+   - `FuzzyMatchResolver` agrupa a mesma partida das duas fontes
+   - Alertas de divergÃªncia disparam, som funciona, toggle/ignore agem corretamente
+   - Layout mobile Ã© usÃ¡vel
 
 ## Still Pending / Manual
 
-- Real Google API key and Search Engine ID
-- VM external IP and SSH user
-- Production secrets outside Git
-- Real live-match validation during game windows
-- BetsAPI token and payload validation, if BetsAPI returns to scope
-- API-Football key, if the paid official source is enabled
-- Clean Windows smoke test of `publish\SportsMonitor.Desktop.exe`
+- ValidaÃ§Ã£o ao vivo com partidas reais (SofaScore + 365Scores)
+- Google API key (opcional)
+- BetsAPI token e validaÃ§Ã£o do campo LA, se retornar ao escopo
+- API-Football key, se o provider pago for habilitado
+- Smoke test do pacote Windows `publish\SportsMonitor.Desktop.exe` em mÃ¡quina limpa
 
 ## Build Commands
 
@@ -141,3 +152,4 @@ VM_USER=seu_usuario VM_IP=IP_DA_VM ./deploy.sh
 - No fingerprint spoofing
 - No scraping protected pages or bypassing access controls
 - No relying on chat memory for important project state; update handoff docs before stopping
+
