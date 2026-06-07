@@ -21,4 +21,5 @@ appsettings.Local.json
 appsettings.Production.json
 publish/
 publish-linux/
+publish-local-agent/
 publish.zip
