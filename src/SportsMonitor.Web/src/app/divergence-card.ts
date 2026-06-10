@@ -15,11 +15,15 @@ import { LocalTimePipe } from './local-time.pipe';
           <span class="alert-type">{{ labelType(d().type) }}</span>
           <span class="alert-time">{{ d().detectedAt | localTime }}</span>
         </div>
-        <div class="alert-values">
-          <span class="val">{{ labelSource(d().sourceA) }}: <strong>{{ d().sourceAValue }}</strong></span>
-          <span class="sep">≠</span>
-          <span class="val">{{ labelSource(d().sourceB) }}: <strong>{{ d().sourceBValue }}</strong></span>
-        </div>
+        @if (d().description) {
+          <div class="alert-desc">{{ d().description }}</div>
+        } @else {
+          <div class="alert-values">
+            <span class="val">{{ labelSource(d().sourceA) }}: <strong>{{ d().sourceAValue }}</strong></span>
+            <span class="sep">≠</span>
+            <span class="val">{{ labelSource(d().sourceB) }}: <strong>{{ d().sourceBValue }}</strong></span>
+          </div>
+        }
         <div class="btn-group">
           <button class="btn-confirm" (click)="confirm()">Confirmar</button>
           <button class="btn-false-pos" (click)="falsePositive()">Falso Positivo</button>
@@ -42,6 +46,7 @@ import { LocalTimePipe } from './local-time.pipe';
     .alert-bar.Low .alert-icon, .alert-bar.Low .alert-type { color: #a6e3a1; }
     .alert-type { font-size: 11px; font-weight: 600; flex: 1; }
     .alert-time { font-size: 10px; color: #45475a; }
+    .alert-desc { font-size: 11px; color: #cdd6f4; line-height: 1.35; }
     .alert-values { font-size: 11px; color: #a6adc8; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
     .val { color: #a6adc8; }
     .val strong { color: #cdd6f4; }

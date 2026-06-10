@@ -9,6 +9,10 @@ public class CardMismatchRule : IDivergenceRule
 
     public IEnumerable<Divergence> Check(NormalizedMatch a, NormalizedMatch b)
     {
+        // Needs card events from both sides — only run between event-providing sources.
+        if (!a.ProvidesEvents || !b.ProvidesEvents)
+            yield break;
+
         foreach (var cardType in new[] { EventType.YellowCard, EventType.RedCard })
         {
             var cardsA = a.Events.Where(e => e.Type == cardType).ToList();
@@ -25,6 +29,7 @@ public class CardMismatchRule : IDivergenceRule
                         ? DivergenceType.YellowCardMismatch
                         : DivergenceType.RedCardMismatch;
 
+                    var cor = cardType == EventType.YellowCard ? "Amarelo" : "Vermelho";
                     yield return new Divergence(
                         Guid.NewGuid(),
                         a.MatchId, a.HomeTeam, a.AwayTeam,
@@ -33,7 +38,9 @@ public class CardMismatchRule : IDivergenceRule
                         a.Source, $"{cardA.Minute}' {cardA.PlayerName}",
                         b.Source, $"{match.Minute}' {match.PlayerName}",
                         OfficialSourceValue: null,
-                        DateTime.UtcNow
+                        DateTime.UtcNow,
+                        Description: $"Cartão {cor} aos {cardA.Minute}' para jogador diferente — " +
+                                    $"{Sources.Label(a.Source)}: {cardA.PlayerName}, {Sources.Label(b.Source)}: {match.PlayerName}"
                     );
                 }
             }

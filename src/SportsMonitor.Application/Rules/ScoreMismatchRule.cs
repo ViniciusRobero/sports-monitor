@@ -10,15 +10,20 @@ public class ScoreMismatchRule : IDivergenceRule
         if (a.HomeScore == b.HomeScore && a.AwayScore == b.AwayScore)
             yield break;
 
+        var valA = $"{a.HomeScore}-{a.AwayScore}";
+        var valB = $"{b.HomeScore}-{b.AwayScore}";
+
         yield return new Divergence(
             Guid.NewGuid(),
             a.MatchId, a.HomeTeam, a.AwayTeam,
             DivergenceType.ScoreMismatch,
             Severity.Critical,
-            a.Source, $"{a.HomeScore}-{a.AwayScore}",
-            b.Source, $"{b.HomeScore}-{b.AwayScore}",
+            a.Source, valA,
+            b.Source, valB,
             OfficialSourceValue: null,
-            DateTime.UtcNow
+            DateTime.UtcNow,
+            Description: $"Placar diferente — {Sources.Label(a.Source)}: {valA}, {Sources.Label(b.Source)}: {valB} " +
+                        "(uma fonte registrou um gol que a outra ainda não)"
         );
     }
 }

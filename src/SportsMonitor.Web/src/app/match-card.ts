@@ -48,6 +48,10 @@ const SOURCE_LABELS: Record<string, string> = {
             @if (isDivergent(entry.source)) { <span class="src-warn">⚠</span> }
           </div>
         }
+        <span class="source-count" [class.single]="sourceEntries().length < 2"
+              [title]="sourceEntries().length < 2 ? 'Apenas uma fonte cobre este jogo — sem comparação possível' : 'Comparado entre fontes'">
+          {{ sourceEntries().length < 2 ? '1 fonte' : sourceEntries().length + ' fontes' }}
+        </span>
       </div>
 
       @if (expanded()) {
@@ -239,6 +243,8 @@ const SOURCE_LABELS: Record<string, string> = {
     .src-name { color: #7070a0; font-size: 10px; }
     .src-score { color: #e2e2f0; font-weight: 600; font-variant-numeric: tabular-nums; }
     .src-warn { color: #ff4757; font-size: 10px; }
+    .source-count { margin-left: auto; align-self: center; font-size: 10px; color: #6c7086; padding: 2px 7px; border: 1px solid #2a2a3a; border-radius: 10px; white-space: nowrap; }
+    .source-count.single { color: #fab387; border-color: rgba(250,179,135,0.35); }
 
     /* Expanded detail */
     .match-detail {

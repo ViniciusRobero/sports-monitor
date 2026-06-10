@@ -54,4 +54,17 @@ public class MissingGoalRuleTests
 
         _rule.Check(a, b).Should().BeEmpty();
     }
+
+    [Fact]
+    public void Check_WhenOneSourceProvidesNoEvents_ReturnsNoDivergences()
+    {
+        // A score-only source (365Scores) has no event list — it must not be flagged as
+        // "missing" the goal that an event source (SofaScore) reports. The goal-lag case
+        // is covered by ScoreMismatch instead.
+        var sofa = MatchBuilder.Create().WithSource("sofascore").WithGoal(40, "Pedro").Build();
+        var s365 = MatchBuilder.Create().WithSource("365scores").WithProvidesEvents(false).Build();
+
+        _rule.Check(sofa, s365).Should().BeEmpty();
+        _rule.Check(s365, sofa).Should().BeEmpty();
+    }
 }

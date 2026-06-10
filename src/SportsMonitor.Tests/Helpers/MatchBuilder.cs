@@ -18,6 +18,7 @@ public class MatchBuilder
     private readonly List<MatchEvent> _events = [];
     private string _source = "api_football";
     private DateTime _collectedAt = DateTime.UtcNow;
+    private bool _providesEvents = true;
 
     public static MatchBuilder Create() => new();
 
@@ -27,6 +28,7 @@ public class MatchBuilder
     public MatchBuilder WithStatus(MatchStatus s) { _status = s; return this; }
     public MatchBuilder WithSource(string s) { _source = s; return this; }
     public MatchBuilder WithCollectedAt(DateTime dt) { _collectedAt = dt; return this; }
+    public MatchBuilder WithProvidesEvents(bool v) { _providesEvents = v; return this; }
     public MatchBuilder WithGoal(int minute, string player, string team = "home")
     {
         _events.Add(new MatchEvent(EventType.Goal, minute, player, team));
@@ -46,7 +48,8 @@ public class MatchBuilder
     public NormalizedMatch Build() => new(
         _matchId, _homeTeam, _awayTeam, _competition,
         _kickOff, _homeScore, _awayScore, _status,
-        _events.AsReadOnly(), _source, _collectedAt
+        _events.AsReadOnly(), _source, _collectedAt,
+        ProvidesEvents: _providesEvents
     );
 }
 

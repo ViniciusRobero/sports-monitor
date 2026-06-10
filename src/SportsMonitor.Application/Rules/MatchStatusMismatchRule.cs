@@ -23,7 +23,9 @@ public class MatchStatusMismatchRule : IDivergenceRule
             a.Source, a.Status.ToString(),
             b.Source, b.Status.ToString(),
             OfficialSourceValue: null,
-            DateTime.UtcNow
+            DateTime.UtcNow,
+            Description: $"Status diferente — {Sources.Label(a.Source)}: {Sources.Status(a.Status)}, " +
+                        $"{Sources.Label(b.Source)}: {Sources.Status(b.Status)}"
         );
     }
 

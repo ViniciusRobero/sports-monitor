@@ -9,6 +9,10 @@ public class GoalScorerMismatchRule : IDivergenceRule
 
     public IEnumerable<Divergence> Check(NormalizedMatch a, NormalizedMatch b)
     {
+        // Needs scorer names from both sides — only run between event-providing sources.
+        if (!a.ProvidesEvents || !b.ProvidesEvents)
+            yield break;
+
         var goalsA = a.Events.Where(e => e.Type == EventType.Goal).ToList();
         var goalsB = b.Events.Where(e => e.Type == EventType.Goal).ToList();
 
@@ -26,7 +30,9 @@ public class GoalScorerMismatchRule : IDivergenceRule
                     a.Source, $"{goalA.Minute}' {goalA.PlayerName}",
                     b.Source, $"{match.Minute}' {match.PlayerName}",
                     OfficialSourceValue: null,
-                    DateTime.UtcNow
+                    DateTime.UtcNow,
+                    Description: $"Autor do gol aos {goalA.Minute}' diverge — " +
+                                $"{Sources.Label(a.Source)}: {goalA.PlayerName}, {Sources.Label(b.Source)}: {match.PlayerName}"
                 );
         }
     }

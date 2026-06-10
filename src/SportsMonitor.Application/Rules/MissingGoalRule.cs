@@ -9,6 +9,13 @@ public class MissingGoalRule : IDivergenceRule
 
     public IEnumerable<Divergence> Check(NormalizedMatch a, NormalizedMatch b)
     {
+        // Event-level comparison only makes sense between two sources that both expose events.
+        // A score-only source (e.g. 365Scores) has no event list — comparing against it would
+        // flag every goal as "missing" even when the scores already agree. The goal-lag case
+        // (one source registered a goal the other hasn't) is caught by ScoreMismatch instead.
+        if (!a.ProvidesEvents || !b.ProvidesEvents)
+            yield break;
+
         var goalsA = a.Events.Where(e => e.Type == EventType.Goal).ToList();
         var goalsB = b.Events.Where(e => e.Type == EventType.Goal).ToList();
 
@@ -31,6 +38,9 @@ public class MissingGoalRule : IDivergenceRule
             has.Source, $"{goal.Minute}' {goal.PlayerName}",
             missingIn, "—",
             OfficialSourceValue: null,
-            DateTime.UtcNow
+            DateTime.UtcNow,
+            Description: $"{Sources.Label(has.Source)} registrou gol aos {goal.Minute}'" +
+                         (string.IsNullOrWhiteSpace(goal.PlayerName) ? "" : $" ({goal.PlayerName})") +
+                         $" que {Sources.Label(missingIn)} não mostra"
         );
 }

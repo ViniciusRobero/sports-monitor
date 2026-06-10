@@ -77,7 +77,8 @@ public class Scores365Provider : IMatchDataProvider
             kickOff, homeScore, awayScore,
             MatchStatus.Live,
             [],     // 365Scores does not expose individual events — score-only source
-            Name, DateTime.UtcNow
+            Name, DateTime.UtcNow,
+            ProvidesEvents: false
         );
     }
 

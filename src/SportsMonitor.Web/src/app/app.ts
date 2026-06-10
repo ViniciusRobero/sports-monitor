@@ -102,9 +102,13 @@ const SEVERITY_ORDER: Severity[] = ['Critical', 'High', 'Medium', 'Low'];
                       <span class="global-type">{{ labelType(d.type) }}</span>
                     </div>
                     <div class="global-values">
-                      {{ labelSource(d.sourceA) }}: {{ d.sourceAValue }}
-                      <span class="sep">≠</span>
-                      {{ labelSource(d.sourceB) }}: {{ d.sourceBValue }}
+                      @if (d.description) {
+                        {{ d.description }}
+                      } @else {
+                        {{ labelSource(d.sourceA) }}: {{ d.sourceAValue }}
+                        <span class="sep">≠</span>
+                        {{ labelSource(d.sourceB) }}: {{ d.sourceBValue }}
+                      }
                     </div>
                     <div class="global-actions">
                       <button class="btn-confirm" (click)="confirm(d.id)">Confirmar</button>

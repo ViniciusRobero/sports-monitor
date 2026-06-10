@@ -18,6 +18,7 @@ export interface Divergence {
   verificationStatus: VerificationStatus;
   replayLink: string | null;
   analystNotes: string | null;
+  description: string;
 }
 
 export interface GoogleSearchResult {
