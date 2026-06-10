@@ -20,9 +20,17 @@ $tempDir = Join-Path ([System.IO.Path]::GetTempPath()) ("sportsmonitor-deploy-" 
 
 function Invoke-Gcloud {
     param([Parameter(ValueFromRemainingArguments = $true)][string[]]$Args)
+    # PowerShell 5.1 turns any stderr from native executables into ErrorRecords.
+    # gcloud forwards nginx stderr ("syntax is ok") which would stop the script.
+    # Temporarily silence ErrorAction so stderr output doesn't abort execution;
+    # we still check the actual exit code manually.
+    $prev = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
     & gcloud @Args
-    if ($LASTEXITCODE -ne 0) {
-        throw "gcloud $($Args -join ' ') failed"
+    $code = $LASTEXITCODE
+    $ErrorActionPreference = $prev
+    if ($code -ne 0) {
+        throw "gcloud $($Args -join ' ') failed with exit code $code"
     }
 }
 
@@ -124,6 +132,7 @@ sudo cp -a "$homeDir/sportsmonitor-upload/publish-linux/." '$AppDir/'
 if [ -f "$homeDir/appsettings.Production.json" ]; then sudo cp "$homeDir/appsettings.Production.json" '$AppDir/'; fi
 sudo chmod +x '$AppDir/SportsMonitor.Bff'
 sudo mkdir -p '$AppDir/data'
+sudo mkdir -p '$AppDir/downloads'
 sudo chown -R '${remoteUser}:${remoteUser}' '$AppDir'
 sudo mv "$homeDir/sportsmonitor.service" /etc/systemd/system/sportsmonitor.service
 sudo mv "$homeDir/nginx-sportsmonitor.conf" /etc/nginx/sites-available/sportsmonitor
@@ -155,6 +164,19 @@ sudo systemctl restart nginx
         --zone $Zone `
         --project $ProjectId `
         --format "value(networkInterfaces[0].accessConfigs[0].natIP)").Trim()
+
+    $localAgentZip = Join-Path $root "local-agent.zip"
+    if (Test-Path $localAgentZip) {
+        Write-Host "==> Uploading LocalAgent zip to /downloads/..." -ForegroundColor Cyan
+        Invoke-Gcloud compute scp $localAgentZip "${InstanceName}:${homeDir}/local-agent.zip" `
+            --zone $Zone `
+            --project $ProjectId
+        Invoke-Gcloud compute ssh $InstanceName `
+            --zone $Zone `
+            --project $ProjectId `
+            --command "sudo mv $homeDir/local-agent.zip '$AppDir/downloads/local-agent.zip' && sudo chmod 644 '$AppDir/downloads/local-agent.zip'"
+        Write-Host "    Download: http://$ip/downloads/local-agent.zip" -ForegroundColor Green
+    }
 
     Write-Host ""
     Write-Host "==> Deploy complete" -ForegroundColor Green

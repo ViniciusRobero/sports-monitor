@@ -23,3 +23,8 @@ publish/
 publish-linux/
 publish-local-agent/
 publish.zip
+# LocalAgent ZIP is a 366MB build artifact — never commit it (exceeds GitHub's 100MB limit).
+# publish-local-agent.ps1 regenerates it; deploy-gcp.ps1 uploads it to the VM.
+/local-agent.zip
+local-agent-new.zip
+src/SportsMonitor.Bff/wwwroot/downloads/*.zip

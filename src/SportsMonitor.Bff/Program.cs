@@ -1,11 +1,13 @@
 using System.Text.Json.Serialization;
 using System.Threading.Channels;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Options;
 using SportsMonitor.Application;
 using SportsMonitor.Application.Rules;
 using SportsMonitor.Workers;
 using SportsMonitor.Workers.Base;
 using SportsMonitor.Bff.Alerts;
+using SportsMonitor.Bff.Controllers;
 using SportsMonitor.Bff.Hubs;
 using SportsMonitor.Domain.Configuration;
 using SportsMonitor.Domain.Interfaces;
@@ -17,6 +19,8 @@ using SportsMonitor.Infrastructure.Services;
 using SportsMonitor.Infrastructure.Stores;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.Configure<RelayOptions>(builder.Configuration.GetSection("RelayOptions"));
 
 builder.Services.AddControllers()
     .AddJsonOptions(opts =>
@@ -121,6 +125,16 @@ store.SnapshotUpdated += match => _ = engine.EvaluateAsync(match);
 
 app.UseDefaultFiles();
 app.UseStaticFiles();
+
+var downloadsDir = Path.Combine(AppContext.BaseDirectory, "downloads");
+if (Directory.Exists(downloadsDir))
+{
+    app.UseStaticFiles(new StaticFileOptions
+    {
+        FileProvider = new PhysicalFileProvider(downloadsDir),
+        RequestPath = "/downloads"
+    });
+}
 
 app.MapControllers();
 app.MapHub<AlertHub>("/hubs/alerts");

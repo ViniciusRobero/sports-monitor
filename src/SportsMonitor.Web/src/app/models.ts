@@ -77,3 +77,18 @@ export interface ProviderStatus {
   lastFailureUtc: string | null;
   lastError: string | null;
 }
+
+export interface MatchGroup {
+  matchId: string;
+  homeTeam: string;
+  awayTeam: string;
+  competition: string;
+  kickOff: string;
+  status: string;
+  sources: { [source: string]: MatchSnapshot };
+}
+
+export interface CompetitionGroup {
+  competition: string;
+  matches: MatchGroup[];
+}

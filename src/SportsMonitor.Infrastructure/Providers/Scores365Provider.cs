@@ -56,11 +56,13 @@ public class Scores365Provider : IMatchDataProvider
 
         var homeTeam = home.TryGetProperty("name", out var hn) ? hn.GetString() ?? "" : "";
         var awayTeam = away.TryGetProperty("name", out var an) ? an.GetString() ?? "" : "";
-        var homeScore = home.TryGetProperty("score", out var hs) ? (int)hs.GetDouble() : 0;
-        var awayScore = away.TryGetProperty("score", out var aws) ? (int)aws.GetDouble() : 0;
+        var homeScore = ReadScore(home);
+        var awayScore = ReadScore(away);
 
         var competition = "";
-        if (game.TryGetProperty("competitionId", out var compId))
+        if (game.TryGetProperty("competitionDisplayName", out var displayName))
+            competition = displayName.GetString() ?? "";
+        if (string.IsNullOrEmpty(competition) && game.TryGetProperty("competitionId", out var compId))
             competition = compId.ToString();
 
         var kickOff = game.TryGetProperty("startTime", out var st)
@@ -78,6 +80,14 @@ public class Scores365Provider : IMatchDataProvider
             Name, DateTime.UtcNow
         );
     }
+
+    // 365Scores uses score = -1 as a "no live score available" sentinel (common in lower-tier
+    // competitions). Normalize it to 0 so it doesn't corrupt the display or trigger false
+    // ScoreMismatch divergences against sources that do have the score.
+    private static int ReadScore(JsonElement competitor) =>
+        competitor.TryGetProperty("score", out var s) && s.ValueKind == JsonValueKind.Number
+            ? Math.Max(0, (int)s.GetDouble())
+            : 0;
 
     private static bool IsSoccer(JsonElement game) =>
         game.TryGetProperty("sportId", out var s) && s.GetInt32() == 1;

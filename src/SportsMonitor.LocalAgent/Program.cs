@@ -1,7 +1,7 @@
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Logging;
 using SportsMonitor.Domain.Configuration;
 using SportsMonitor.Infrastructure.Providers;
 using SportsMonitor.Infrastructure.Resolvers;
@@ -22,53 +22,31 @@ if (args.Contains("--help") || args.Contains("-h"))
         Config file (edit to change defaults):
           appsettings.json  — must be in the same folder as the .exe
           Key: "BffUrl"     — URL of the remote BFF (e.g. "http://34.151.245.70")
-
-        Example — point to a different server:
-          SportsMonitor.LocalAgent.exe --bff-url http://NOVO-IP
         """);
     return;
 }
 
 var options = LocalAgentOptions.Load(args);
-using var cts = new CancellationTokenSource();
-Console.CancelKeyPress += (_, eventArgs) =>
-{
-    eventArgs.Cancel = true;
-    cts.Cancel();
-};
 
-using var bffHttp = new HttpClient
-{
-    BaseAddress = new Uri(options.BffUrl),
-    Timeout = TimeSpan.FromSeconds(30)
-};
-
-using var sofaHttp = new HttpClient();
-var provider = new SofaScoreHttpProvider(
-    sofaHttp,
-    options.SofaScore,
-    new FuzzyMatchResolver(),
-    NullLogger<SofaScoreHttpProvider>.Instance);
-
-var jsonOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web);
-jsonOptions.Converters.Add(new JsonStringEnumConverter());
-
-Console.WriteLine($"SportsMonitor.LocalAgent iniciado.");
-Console.WriteLine($"  BFF:      {options.BffUrl}");
+Console.Title = "SportsMonitor LocalAgent";
+Console.WriteLine("============================================");
+Console.WriteLine("  SportsMonitor LocalAgent");
+Console.WriteLine("============================================");
+Console.WriteLine($"  BFF:       {options.BffUrl}");
 Console.WriteLine($"  Intervalo: {options.IntervalSeconds}s");
-Console.WriteLine($"  Para mudar o servidor: edite appsettings.json (BffUrl) ou use --bff-url <url>");
-Console.WriteLine("Pressione Ctrl+C para parar.");
+Console.WriteLine("  Para parar: feche esta janela ou Ctrl+C");
+Console.WriteLine("============================================");
 Console.WriteLine();
 
+using var cts = new CancellationTokenSource();
+Console.CancelKeyPress += (_, e) => { e.Cancel = true; cts.Cancel(); };
+
+// Loop externo — reinicia tudo (inclusive Playwright) em caso de falha
 while (!cts.Token.IsCancellationRequested)
 {
     try
     {
-        var matches = await provider.GetLiveMatchesAsync(cts.Token);
-        using var response = await bffHttp.PostAsJsonAsync("/api/relay/sofascore", matches, jsonOptions, cts.Token);
-        response.EnsureSuccessStatusCode();
-
-        Console.WriteLine($"{DateTimeOffset.Now:yyyy-MM-dd HH:mm:ss} relayed {matches.Count} SofaScore matches.");
+        await RunAsync(options, cts.Token);
     }
     catch (OperationCanceledException) when (cts.Token.IsCancellationRequested)
     {
@@ -76,25 +54,93 @@ while (!cts.Token.IsCancellationRequested)
     }
     catch (Exception ex)
     {
-        Console.Error.WriteLine($"{DateTimeOffset.Now:yyyy-MM-dd HH:mm:ss} relay failed: {ex.Message}");
-    }
-
-    try
-    {
-        await Task.Delay(TimeSpan.FromSeconds(options.IntervalSeconds), cts.Token);
-    }
-    catch (OperationCanceledException) when (cts.Token.IsCancellationRequested)
-    {
-        break;
+        Console.Error.WriteLine();
+        Console.Error.WriteLine($"[ERRO] {ex.Message}");
+        Console.Error.WriteLine("[INFO] Reiniciando em 15s... (Ctrl+C para parar)");
+        Console.Error.WriteLine();
+        try { await Task.Delay(TimeSpan.FromSeconds(15), cts.Token); }
+        catch (OperationCanceledException) { break; }
     }
 }
 
-Console.WriteLine("SportsMonitor.LocalAgent parado.");
+Console.WriteLine();
+Console.WriteLine("Agente parado. Pressione qualquer tecla para fechar...");
+Console.ReadKey(intercept: true);
+
+static async Task RunAsync(LocalAgentOptions options, CancellationToken ct)
+{
+    // Environment.ProcessPath aponta para o exe real (não a pasta temp do single-file)
+    var exeDir = Path.GetDirectoryName(Environment.ProcessPath) ?? AppContext.BaseDirectory;
+    var playwrightDir = Path.Combine(exeDir, ".playwright");
+
+    // Força Playwright a instalar/usar browsers na pasta .playwright ao lado do exe.
+    // Sem isso, ele procura em %USERPROFILE%\.playwright ou %LOCALAPPDATA%\ms-playwright
+    // e falha com "Driver not found" na primeira execução.
+    Environment.SetEnvironmentVariable("PLAYWRIGHT_BROWSERS_PATH", playwrightDir);
+    Directory.CreateDirectory(playwrightDir);
+
+    Console.WriteLine("Verificando navegador (pode baixar ~150MB na primeira vez)...");
+    var prev = Directory.GetCurrentDirectory();
+    Directory.SetCurrentDirectory(exeDir);
+    var exitCode = Microsoft.Playwright.Program.Main(["install", "chromium"]);
+    Directory.SetCurrentDirectory(prev);
+    if (exitCode != 0)
+        throw new Exception("Falha ao instalar o Playwright. Verifique sua conexao com a internet.");
+    Console.WriteLine("Navegador OK.");
+    Console.WriteLine();
+
+    Console.WriteLine("Iniciando monitoramento...");
+    Console.WriteLine();
+
+    using var bffHttp = new HttpClient
+    {
+        BaseAddress = new Uri(options.BffUrl),
+        Timeout = TimeSpan.FromSeconds(30)
+    };
+
+    if (!string.IsNullOrWhiteSpace(options.AgentKey))
+        bffHttp.DefaultRequestHeaders.Add("X-Agent-Key", options.AgentKey);
+
+    using var loggerFactory = LoggerFactory.Create(b =>
+        b.AddSimpleConsole(o => { o.SingleLine = true; o.TimestampFormat = "HH:mm:ss "; })
+         .SetMinimumLevel(LogLevel.Debug));
+
+    await using var provider = new SofaScoreProvider(
+        options.SofaScore,
+        new FuzzyMatchResolver(),
+        loggerFactory.CreateLogger<SofaScoreProvider>());
+
+    var jsonOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+    jsonOptions.Converters.Add(new JsonStringEnumConverter());
+
+    while (!ct.IsCancellationRequested)
+    {
+        try
+        {
+            var matches = await provider.GetLiveMatchesAsync(ct);
+            using var response = await bffHttp.PostAsJsonAsync("/api/relay/sofascore", matches, jsonOptions, ct);
+            response.EnsureSuccessStatusCode();
+            Console.WriteLine($"{DateTimeOffset.Now:yyyy-MM-dd HH:mm:ss} relayed {matches.Count} SofaScore matches.");
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"{DateTimeOffset.Now:yyyy-MM-dd HH:mm:ss} [AVISO] {ex.Message}");
+        }
+
+        try { await Task.Delay(TimeSpan.FromSeconds(options.IntervalSeconds), ct); }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { return; }
+    }
+}
 
 internal sealed class LocalAgentOptions
 {
     public string BffUrl { get; set; } = "http://34.151.245.70";
-    public int IntervalSeconds { get; set; } = 30;
+    public int IntervalSeconds { get; set; } = 90;
+    public string AgentKey { get; set; } = "";
     public SofaScoreOptions SofaScore { get; set; } = new();
 
     public static LocalAgentOptions Load(string[] args)
@@ -111,9 +157,6 @@ internal sealed class LocalAgentOptions
                 case "--interval" when i + 1 < args.Length && int.TryParse(args[i + 1], out var interval):
                     options.IntervalSeconds = interval;
                     i++;
-                    break;
-                case "--sofascore-url" when i + 1 < args.Length:
-                    options.SofaScore.BaseUrl = args[++i];
                     break;
             }
         }

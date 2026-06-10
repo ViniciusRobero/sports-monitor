@@ -1,0 +1,61 @@
+# Deploy & Operação
+
+## Produção (GCP)
+
+| Campo | Valor |
+|---|---|
+| URL | http://34.151.245.70/ |
+| Project ID | `sportsmonitor-prod` |
+| VM | `sportsmonitor-vm` (e2-small, Ubuntu 22.04) |
+| Zone | `southamerica-east1-b` |
+| Billing | `01FE90-8618C8-3CEE8F` |
+| App | systemd `sportsmonitor` em `localhost:5000`, nginx proxy na porta 80 |
+
+GCP é **CLI-first** (gcloud/ssh/scp + scripts do repo), não Console web. Links Google/GCP levam `?authuser=1`.
+
+## Deploy
+
+```powershell
+.\deploy-gcp.ps1 -ProjectId sportsmonitor-prod
+```
+
+Faz: build do Angular → publish do BFF (linux-x64) → upload via scp → instala systemd + nginx → reinicia → sobe `local-agent.zip` para `/downloads/`.
+
+**Quando NÃO fazer deploy GCP:** mudanças só no SofaScore/LocalAgent não precisam de deploy — o provider roda na máquina do operador. Recompile local e teste (ver [providers.md](providers.md#iteração-no-sofascore)). Deploy só para mudanças no BFF/Web/Workers, ou para publicar o ZIP final já validado.
+
+## Validação em produção
+
+```powershell
+gcloud compute ssh sportsmonitor-vm --zone southamerica-east1-b --project sportsmonitor-prod --command "sudo systemctl status sportsmonitor --no-pager"
+gcloud compute ssh sportsmonitor-vm --zone southamerica-east1-b --project sportsmonitor-prod --command "sudo journalctl -u sportsmonitor -f"
+```
+
+Checar: `http://34.151.245.70/` carrega, SignalR conecta, 365Scores recebe dados em jogos ao vivo, ações de alerta funcionam (Confirmar/Falso positivo/Ignorar/Ignorar todos), layout mobile usável, SofaScore reportado como ativo ou bloqueado.
+
+## Fluxo de release
+
+`correção → testes → revisão → commit → publicação GCP → validação → atualizar docs`.
+
+```powershell
+dotnet test src\SportsMonitor.slnx                              # testes
+npm run build -- --configuration production                     # (em src/SportsMonitor.Web) build do dashboard
+git status --short; git diff                                    # revisão
+```
+
+Revisão: nenhum segredo commitado, `appsettings.Production.json` continua untracked, assets Angular em `wwwroot` batem com o último build, config de provider correta, mudanças não-relacionadas preservadas.
+
+**GitFlow:** trabalho direto em `develop`, merges `--no-ff`, **sem PRs**. Commits terminam com `Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>`.
+
+## Segredos & credenciais
+
+- `appsettings.Production.json` (raiz, gitignored) guarda credenciais de produção. **Nunca** commitar.
+- **Google:** `setup-google-search-key.ps1 -ProjectId sportsmonitor-prod` cria a key e escreve o appsettings. Search Engine ID: `25c69f98aa10d4ba0`. Não reusar a key antiga (deu 403).
+- **365Scores / SofaScore:** sem token.
+- **API-Football / BetsAPI:** pagas, fora do escopo atual.
+
+## Validação local antes de subir
+
+- Testes: `dotnet test src\SportsMonitor.slnx` (78 passando atualmente).
+- Se mexeu em scripts `.ps1` de deploy, valide sintaxe com `[System.Management.Automation.Language.Parser]::ParseFile(...)` antes de commitar.
+
+> Workflow e guia de credenciais originais preservados em [history/](history/) (`RELEASE_WORKFLOW.md`, `CREDENTIALS_GUIDE.md`).

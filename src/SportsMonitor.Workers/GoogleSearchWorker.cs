@@ -52,6 +52,16 @@ public class GoogleSearchWorker : BackgroundService
             {
                 break;
             }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("credentials not configured"))
+            {
+                _logger.LogError("GoogleSearchWorker stopped: {Message}", ex.Message);
+                return; // Don't retry — configuration error, not transient
+            }
+            catch (HttpRequestException ex) when (ex.Message.Contains("Google API error 400") || ex.Message.Contains("Google API error 403"))
+            {
+                _logger.LogError("GoogleSearchWorker stopped: invalid credentials. {Message}", ex.Message);
+                return; // Don't retry — credentials are wrong
+            }
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "GoogleSearchWorker failed. Will retry.");

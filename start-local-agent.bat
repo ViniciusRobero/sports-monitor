@@ -14,9 +14,25 @@ set "RESTART_DELAY=10"
 if not exist "%LOG_DIR%\" mkdir "%LOG_DIR%"
 
 echo.
-echo  ============================================
+echo  ============================================================
 echo   SportsMonitor LocalAgent
-echo  ============================================
+echo  ============================================================
+echo.
+echo   O QUE ESSE PROGRAMA FAZ:
+echo   Roda em segundo plano no seu PC e busca dados de futebol
+echo   ao vivo no SofaScore, enviando para o servidor na nuvem.
+echo   Necessario porque o servidor (GCP) tem IP bloqueado pelo
+echo   SofaScore — o seu PC nao tem essa restricao.
+echo.
+echo   COMO USAR:
+echo   - Deixe esta janela aberta enquanto quiser monitorar jogos
+echo   - "relayed X matches" = funcionando, X partidas ao vivo
+echo   - "relayed 0 matches" = normal, nao ha jogos ao vivo agora
+echo   - Para parar: feche esta janela ou pressione Ctrl+C
+echo   - Se cair por qualquer motivo, reinicia sozinho em 10s
+echo.
+echo   PRIMEIRA VEZ: vai baixar o Chrome (~150MB). Aguarde.
+echo  ============================================================
 echo.
 
 :: ============================================================
@@ -84,18 +100,12 @@ if errorlevel 1 goto :erro_compilacao
 :: ============================================================
 :run
 echo.
-echo  [OK] Pronto!
-echo  Para parar: feche esta janela ou Ctrl+C
+echo  [OK] Tudo pronto! Iniciando monitoramento...
 echo.
 
 :loop
-    :: Nome do log pelo dia atual
-    for /f "tokens=2 delims==" %%d in ('wmic os get LocalDateTime /value 2^>nul') do set "WMIDT=%%d"
-    if defined WMIDT (
-        set "LOGDATE=!WMIDT:~0,4!-!WMIDT:~4,2!-!WMIDT:~6,2!"
-    ) else (
-        set "LOGDATE=%date:~6,4%-%date:~3,2%-%date:~0,2%"
-    )
+    :: Nome do log pelo dia atual (PowerShell garante formato fixo independente do locale)
+    for /f %%d in ('powershell -NoProfile -Command "Get-Date -Format yyyy-MM-dd"') do set "LOGDATE=%%d"
     set "SM_LOG=%LOG_DIR%\agent-!LOGDATE!.log"
 
     echo [%time%] Iniciando LocalAgent...

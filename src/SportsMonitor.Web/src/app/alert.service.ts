@@ -1,11 +1,41 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, computed, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import * as signalR from '@microsoft/signalr';
-import { Divergence, GoogleSearchSnapshot, LiveMatchGroup, MatchSnapshot, VerificationUpdate, ProviderStatus } from './models';
+import { CompetitionGroup, Divergence, GoogleSearchSnapshot, LiveMatchGroup, MatchGroup, MatchSnapshot, VerificationUpdate, ProviderStatus } from './models';
 
 @Injectable({ providedIn: 'root' })
 export class AlertService {
   readonly divergences = signal<Divergence[]>([]);
+
+  readonly competitionGroups = computed<CompetitionGroup[]>(() => {
+    const byMatch = new Map<string, MatchGroup>();
+    for (const snapList of this.liveMatches()) {
+      if (!snapList.length) continue;
+      const first = snapList[0];
+      const competition = snapList.map(s => s.competition).find(c => c && !/^\d+$/.test(c)) ?? first.competition ?? '';
+      const group: MatchGroup = {
+        matchId: first.matchId,
+        homeTeam: first.homeTeam,
+        awayTeam: first.awayTeam,
+        competition,
+        kickOff: first.kickOff,
+        status: first.status,
+        sources: {}
+      };
+      for (const snap of snapList) group.sources[snap.source] = snap;
+      byMatch.set(first.matchId, group);
+    }
+    const byComp = new Map<string, MatchGroup[]>();
+    for (const match of byMatch.values()) {
+      const comp = match.competition || 'Sem competição';
+      if (!byComp.has(comp)) byComp.set(comp, []);
+      byComp.get(comp)!.push(match);
+    }
+    return [...byComp.entries()]
+      .map(([competition, matches]) => ({ competition, matches }))
+      .filter(g => !/^\d+$/.test(g.competition))
+      .sort((a, b) => a.competition.localeCompare(b.competition));
+  });
   readonly liveMatches = signal<LiveMatchGroup[]>([]);
   readonly googleSnapshots = signal<GoogleSearchSnapshot[]>([]);
   readonly providerStatuses = signal<ProviderStatus[]>([]);
@@ -130,17 +160,36 @@ export class AlertService {
     if (!this.soundEnabled()) return;
 
     const ctx = new AudioContext();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(880, ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(1760, ctx.currentTime + 0.08);
-    osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.16);
-    gain.gain.setValueAtTime(0.35, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
-    osc.start();
-    osc.stop(ctx.currentTime + 0.25);
+
+    // Three sharp whistle blasts (referee style)
+    const blastAt = (startTime: number) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const filter = ctx.createBiquadFilter();
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(ctx.destination);
+
+      filter.type = 'bandpass';
+      filter.frequency.value = 2800;
+      filter.Q.value = 8;
+
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(2700, startTime);
+      osc.frequency.linearRampToValueAtTime(3100, startTime + 0.05);
+      osc.frequency.linearRampToValueAtTime(2800, startTime + 0.18);
+
+      gain.gain.setValueAtTime(0, startTime);
+      gain.gain.linearRampToValueAtTime(0.35, startTime + 0.01);
+      gain.gain.setValueAtTime(0.33, startTime + 0.18);
+      gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.24);
+
+      osc.start(startTime);
+      osc.stop(startTime + 0.24);
+    };
+
+    blastAt(ctx.currentTime);
+    blastAt(ctx.currentTime + 0.3);
+    blastAt(ctx.currentTime + 0.6);
   }
 }
