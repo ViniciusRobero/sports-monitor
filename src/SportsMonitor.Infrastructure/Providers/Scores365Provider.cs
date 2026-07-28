@@ -9,16 +9,24 @@ namespace SportsMonitor.Infrastructure.Providers;
 // Useful as a 4th independent source for ScoreMismatch detection.
 public class Scores365Provider : IMatchDataProvider
 {
+    private static readonly TimeSpan MaximumLiveMatchAge = TimeSpan.FromHours(6);
+
     private const string LiveGamesPath =
         "/web/games/?appTypeId=5&langId=31&timezoneName=America%2FSao_Paulo&userCountryId=-1&onlyLive=true";
 
     private readonly HttpClient _http;
     private readonly IMatchResolver _resolver;
+    private readonly TimeProvider _timeProvider;
 
-    public Scores365Provider(HttpClient http, Scores365Options options, IMatchResolver resolver)
+    public Scores365Provider(
+        HttpClient http,
+        Scores365Options options,
+        IMatchResolver resolver,
+        TimeProvider? timeProvider = null)
     {
         _http = http;
         _resolver = resolver;
+        _timeProvider = timeProvider ?? TimeProvider.System;
         _http.BaseAddress ??= new Uri(options.BaseUrl);
         if (!_http.DefaultRequestHeaders.Contains("User-Agent"))
             _http.DefaultRequestHeaders.Add("User-Agent", options.UserAgent);
@@ -45,6 +53,7 @@ public class Scores365Provider : IMatchDataProvider
             .Select(MapGame)
             .Where(m => m is not null)
             .Cast<NormalizedMatch>()
+            .Where(IsPlausiblyLive)
             .ToList();
     }
 
@@ -93,5 +102,6 @@ public class Scores365Provider : IMatchDataProvider
     private static bool IsSoccer(JsonElement game) =>
         game.TryGetProperty("sportId", out var s) && s.GetInt32() == 1;
 
-    // statusGroup 1 = scheduled/pre-match (filtered by onlyLive=true in the request URL)
+    private bool IsPlausiblyLive(NormalizedMatch match) =>
+        match.KickOff >= _timeProvider.GetUtcNow().UtcDateTime - MaximumLiveMatchAge;
 }

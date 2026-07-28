@@ -7,7 +7,8 @@ namespace SportsMonitor.Tests.Stores;
 
 public class InMemorySnapshotStoreTests
 {
-    private readonly InMemorySnapshotStore _store = new();
+    private static readonly DateTime Now = new(2026, 5, 26, 22, 0, 0, DateTimeKind.Utc);
+    private readonly InMemorySnapshotStore _store = new(new FixedTimeProvider(Now));
 
     [Fact]
     public void Upsert_WhenMatchAdded_EventFires()
@@ -100,6 +101,65 @@ public class InMemorySnapshotStoreTests
     }
 
     [Fact]
+    public void GetLiveMatchIds_ExcludesLiveMatchWithOldKickOff()
+    {
+        _store.Upsert(MatchBuilder.Create()
+            .WithMatchId("m1")
+            .WithKickOff(Now.AddHours(-7))
+            .WithCollectedAt(Now)
+            .Build());
+
+        _store.GetLiveMatchIds().Should().BeEmpty();
+    }
+
+    [Fact]
+    public void GetLiveMatchIds_ExcludesStaleSnapshot()
+    {
+        _store.Upsert(MatchBuilder.Create()
+            .WithMatchId("m1")
+            .WithKickOff(Now.AddHours(-1))
+            .WithCollectedAt(Now.AddMinutes(-6))
+            .Build());
+
+        _store.GetLiveMatchIds().Should().BeEmpty();
+    }
+
+    [Fact]
+    public void GetLiveMatchIds_RemovesStaleSourceWhenAnotherSourceIsCurrent()
+    {
+        _store.Upsert(MatchBuilder.Create()
+            .WithMatchId("m1")
+            .WithSource("sofascore")
+            .WithKickOff(Now.AddHours(-1))
+            .WithCollectedAt(Now.AddMinutes(-6))
+            .Build());
+        _store.Upsert(MatchBuilder.Create()
+            .WithMatchId("m1")
+            .WithSource("365scores")
+            .WithKickOff(Now.AddHours(-1))
+            .WithCollectedAt(Now)
+            .Build());
+
+        _store.GetLiveMatchIds().Should().BeEquivalentTo(["m1"]);
+        _store.GetAllForMatch("m1")
+            .Should().ContainSingle()
+            .Which.Source.Should().Be("365scores");
+    }
+
+    [Fact]
+    public void GetLiveMatchIds_RemovesMatchWhenAllSnapshotsAreExpired()
+    {
+        _store.Upsert(MatchBuilder.Create()
+            .WithMatchId("m1")
+            .WithKickOff(Now.AddHours(-7))
+            .WithCollectedAt(Now)
+            .Build());
+
+        _store.GetLiveMatchIds().Should().BeEmpty();
+        _store.GetAllForMatch("m1").Should().BeEmpty();
+    }
+
+    [Fact]
     public void RemoveMatch_RemovesMatchFromStore()
     {
         _store.Upsert(MatchBuilder.Create().WithMatchId("m1").WithSource("sofascore").Build());
@@ -119,5 +179,10 @@ public class InMemorySnapshotStoreTests
 
         // Deve ter disparado de forma síncrona antes desta linha
         fired.Should().BeTrue();
+    }
+
+    private sealed class FixedTimeProvider(DateTime utcNow) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => new(utcNow);
     }
 }

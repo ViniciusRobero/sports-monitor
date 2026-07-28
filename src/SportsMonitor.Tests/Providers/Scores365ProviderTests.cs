@@ -9,6 +9,9 @@ namespace SportsMonitor.Tests.Providers;
 
 public class Scores365ProviderTests
 {
+    private static readonly DateTime ProviderNow =
+        new(2026, 5, 27, 22, 0, 0, DateTimeKind.Utc);
+
     private const string LiveGamesJson = """
         {
           "liveGamesCount": 2,
@@ -91,11 +94,40 @@ public class Scores365ProviderTests
         result.Should().BeEmpty();
     }
 
+    [Fact]
+    public async Task GetLiveMatchesAsync_ExcludesGameWithOldKickOff()
+    {
+        var provider = BuildProvider("""
+            {
+              "games": [{
+                "id": 4632999,
+                "sportId": 1,
+                "startTime": "2026-05-27T10:00:00Z",
+                "homeCompetitor": { "name": "Old Home", "score": 1 },
+                "awayCompetitor": { "name": "Old Away", "score": 0 }
+              }]
+            }
+            """);
+
+        var result = await provider.GetLiveMatchesAsync(CancellationToken.None);
+
+        result.Should().BeEmpty();
+    }
+
     private static Scores365Provider BuildProvider(string json)
     {
         var handler = new StubHandler(json);
         var http = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
-        return new Scores365Provider(http, new Scores365Options(), new FuzzyMatchResolver());
+        return new Scores365Provider(
+            http,
+            new Scores365Options(),
+            new FuzzyMatchResolver(),
+            new FixedTimeProvider(ProviderNow));
+    }
+
+    private sealed class FixedTimeProvider(DateTime utcNow) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => new(utcNow);
     }
 
     private sealed class StubHandler : HttpMessageHandler
