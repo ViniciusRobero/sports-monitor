@@ -1,5 +1,8 @@
+using System.Security.Cryptography;
+using System.Text;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
+using SportsMonitor.Bff.Services;
 using SportsMonitor.Domain.Interfaces;
 using SportsMonitor.Domain.Models;
 
@@ -14,15 +17,18 @@ public class SofaScoreRelayController : ControllerBase
         [FromBody] List<NormalizedMatch>? matches,
         [FromServices] ISnapshotStore store,
         [FromServices] IMatchResolver resolver,
-        [FromServices] IOptions<RelayOptions> relayOptions)
+        [FromServices] IOptions<RelayOptions> relayOptions,
+        [FromServices] RelayStatusTracker relayStatus)
     {
         var key = relayOptions.Value.AgentKey;
-        if (!string.IsNullOrWhiteSpace(key))
-        {
-            Request.Headers.TryGetValue("X-Agent-Key", out var provided);
-            if (provided != key)
-                return Unauthorized(new { error = "Invalid or missing X-Agent-Key header." });
-        }
+        if (string.IsNullOrWhiteSpace(key))
+            return StatusCode(
+                StatusCodes.Status503ServiceUnavailable,
+                new { error = "SofaScore relay is disabled until RelayOptions:AgentKey is configured." });
+
+        Request.Headers.TryGetValue("X-Agent-Key", out var provided);
+        if (!KeysMatch(key, provided.ToString()))
+            return Unauthorized(new { error = "Invalid or missing X-Agent-Key header." });
 
         if (matches is null)
             return BadRequest(new { error = "Request body must be an array of normalized matches." });
@@ -39,7 +45,16 @@ public class SofaScoreRelayController : ControllerBase
             store.Upsert(resolvedId != match.MatchId ? match with { MatchId = resolvedId } : match);
         }
 
+        relayStatus.RecordSuccess(matches.Count);
         return Ok(new { count = matches.Count });
+    }
+
+    private static bool KeysMatch(string expected, string provided)
+    {
+        var expectedBytes = Encoding.UTF8.GetBytes(expected);
+        var providedBytes = Encoding.UTF8.GetBytes(provided);
+        return expectedBytes.Length == providedBytes.Length
+            && CryptographicOperations.FixedTimeEquals(expectedBytes, providedBytes);
     }
 }
 

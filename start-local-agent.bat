@@ -4,7 +4,7 @@ title SportsMonitor LocalAgent
 color 0A
 
 :: === Configuracoes ===
-set "REPO_URL=https://github.com/ViniciusRobero/sports-monitor.git"
+set "REPO_URL=https://github.com/carlosfrj013-debug/sports-monitor.git"
 set "EXE=%~dp0SportsMonitor.LocalAgent.exe"
 set "LOCAL_PROJECT=%~dp0src\SportsMonitor.LocalAgent"
 set "SETTINGS=%~dp0appsettings.json"

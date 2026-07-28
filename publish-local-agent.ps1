@@ -35,6 +35,6 @@ Write-Host "==> Pronto!" -ForegroundColor Green
 Write-Host ""
 Write-Host "  Pasta de distribuicao:  publish-local-agent\"
 Write-Host "  ZIP para distribuicao:  local-agent.zip"
-Write-Host "  Link de download (apos deploy): http://34.151.245.70/downloads/local-agent.zip"
+Write-Host "  Link de download: sera definido quando o novo servidor for escolhido."
 Write-Host ""
-Write-Host "  Proximo passo: .\deploy-gcp.ps1 para publicar o BFF com o ZIP hospedado."
+Write-Host "  Proximo passo: validar localmente antes de escolher o novo servidor."
