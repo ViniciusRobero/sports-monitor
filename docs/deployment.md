@@ -61,9 +61,10 @@ Revisão: nenhum segredo commitado, `appsettings.Production.json` continua untra
   distribuído ao LocalAgent. Sem essa chave, o endpoint recusa todos os envios.
 - **Google:** `setup-google-search-key.ps1 -ProjectId sportsmonitor-prod` cria a key e escreve o appsettings. Search Engine ID: `25c69f98aa10d4ba0`. Não reusar a key antiga (deu 403).
 - **API-Football:** `setup-api-football.ps1` solicita a chave sem exibi-la,
-  preserva as outras configurações e ativa o provider. O intervalo padrão de
-  900s limita o consumo a até 96 consultas em 24 horas; use intervalo menor
-  somente com cota contratada suficiente.
+  preserva as outras configurações e ativa o provider. Para o teste ao vivo, o
+  intervalo padrão de 60s permite uma sessão de até 90 minutos com 10 das 100
+  consultas diárias preservadas como reserva. Uma chamada traz todos os jogos
+  ao vivo; pare o monitor ao final da sessão.
 - **365Scores / SofaScore:** sem token.
 - **BetsAPI:** paga, fora do escopo atual.
 

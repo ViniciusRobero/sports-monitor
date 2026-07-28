@@ -73,12 +73,16 @@ Mapeamento JSON isolado em `SofaScoreMapper` (testável sem Playwright; `Interna
 ```
 
 O script preserva as demais configurações existentes e ativa somente
-`Providers:ApiFootball`. O intervalo padrão é 900 segundos para caber em até
-96 consultas por 24 horas, adequado ao limite gratuito de 100 consultas/dia.
-Em plano pago, informe um intervalo menor, por exemplo:
+`Providers:ApiFootball`. Para testes ao vivo, o intervalo padrão é 60 segundos:
+uma chamada a `/fixtures?live=all` traz todos os jogos ao vivo, portanto 4 ou 5
+partidas não multiplicam o consumo. No plano gratuito, limite a sessão a 90
+minutos (90 consultas) e preserve 10 consultas de reserva. Pare o monitor ao
+fim da sessão para não consumir a cota restante.
+
+Para uma verificação fora da janela operacional, informe um intervalo maior:
 
 ```powershell
-.\setup-api-football.ps1 -PollingIntervalSeconds 30
+.\setup-api-football.ps1 -PollingIntervalSeconds 900
 ```
 
 Depois de iniciar o BFF, confirme o worker em `/api/providers/status` e compare

@@ -1,6 +1,6 @@
 param(
     [ValidateRange(15, 86400)]
-    [int]$PollingIntervalSeconds = 900
+    [int]$PollingIntervalSeconds = 60
 )
 
 Set-StrictMode -Version Latest
@@ -58,6 +58,9 @@ Write-Host "    Config: $configPath"
 Write-Host "    Polling interval: $PollingIntervalSeconds seconds"
 Write-Host "    Key: ********MASKED********"
 
-if ($PollingIntervalSeconds -lt 900) {
-    Write-Warning "This interval can exceed the free plan's 100 requests/day if the monitor stays on for long periods."
+if ($PollingIntervalSeconds -eq 60) {
+    Write-Host "    Free-plan test window: up to 90 minutes (90 requests + 10 reserved)." -ForegroundColor Yellow
+    Write-Warning "Stop the monitor after the test window so it does not consume the remaining daily quota."
+} elseif ($PollingIntervalSeconds -lt 900) {
+    Write-Warning "This interval can exceed the free plan's 100 requests/day if the monitor stays on continuously."
 }
