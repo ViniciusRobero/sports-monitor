@@ -27,7 +27,7 @@ try {
         $config = [PSCustomObject]@{}
     }
 
-    if (-not ($config.PSObject.Properties.Name -contains "Providers")) {
+    if ($null -eq $config.PSObject.Properties["Providers"]) {
         $config | Add-Member -NotePropertyName Providers -NotePropertyValue ([PSCustomObject]@{})
     }
 
@@ -38,7 +38,7 @@ try {
         BaseUrl = "https://v3.football.api-sports.io"
     }
 
-    if ($config.Providers.PSObject.Properties.Name -contains "ApiFootball") {
+    if ($null -ne $config.Providers.PSObject.Properties["ApiFootball"]) {
         $config.Providers.ApiFootball = $apiFootball
     } else {
         $config.Providers | Add-Member -NotePropertyName ApiFootball -NotePropertyValue $apiFootball
