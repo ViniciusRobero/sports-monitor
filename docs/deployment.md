@@ -60,8 +60,12 @@ Revisão: nenhum segredo commitado, `appsettings.Production.json` continua untra
   `RelayOptions__AgentKey` no servidor e em `AgentKey` no `appsettings.json`
   distribuído ao LocalAgent. Sem essa chave, o endpoint recusa todos os envios.
 - **Google:** `setup-google-search-key.ps1 -ProjectId sportsmonitor-prod` cria a key e escreve o appsettings. Search Engine ID: `25c69f98aa10d4ba0`. Não reusar a key antiga (deu 403).
+- **API-Football:** `setup-api-football.ps1` solicita a chave sem exibi-la,
+  preserva as outras configurações e ativa o provider. O intervalo padrão de
+  900s limita o consumo a até 96 consultas em 24 horas; use intervalo menor
+  somente com cota contratada suficiente.
 - **365Scores / SofaScore:** sem token.
-- **API-Football / BetsAPI:** pagas, fora do escopo atual.
+- **BetsAPI:** paga, fora do escopo atual.
 
 ## Validação local antes de subir
 

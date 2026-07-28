@@ -7,7 +7,7 @@
 | 365Scores | HTTP GET direto | Não | Placar, status | ✅ Ativo |
 | SofaScore | Playwright via **LocalAgent** | Não | Placar, gols, cartões, incidentes | ✅ Ativo (relay) |
 | Google Custom Search | API JSON | API key + Search Engine ID | Snippets/links de verificação | ✅ Ativo |
-| API-Football | HTTP | Paga ($19+/mês) | Eventos estruturados | ❌ Fora de escopo |
+| API-Football | HTTP | API key | Placar, status, eventos estruturados | 🟡 Pronto; requer chave |
 | BetsAPI | HTTP | Paga | Bet365 odds + suspensão | ❌ Fora de escopo |
 
 Limite: apenas dados públicos. Sem login, CAPTCHA, ou bypass de controle de acesso.
@@ -58,3 +58,28 @@ Mapeamento JSON isolado em `SofaScoreMapper` (testável sem Playwright; `Interna
 - Links do Google levam `?authuser=1` (a conta `viniciusroberto17@gmail.com` é o índice 1).
 
 > Endpoints internos detalhados e schema JSONL histórico: [history/PHASE_01_COMPARISON_SOURCES_RESEARCH.md](history/PHASE_01_COMPARISON_SOURCES_RESEARCH.md).
+
+## API-Football (API-Sports)
+
+- Base: `https://v3.football.api-sports.io`
+- Ao vivo: `/fixtures?live=all`
+- Auth: header `x-apisports-key`.
+- A chave deve ficar apenas em `appsettings.Production.json` (gitignored) ou
+  em variável de ambiente; nunca em `appsettings.json` ou no Git.
+- Para configurar no Windows sem exibir a chave no terminal:
+
+```powershell
+.\setup-api-football.ps1
+```
+
+O script preserva as demais configurações existentes e ativa somente
+`Providers:ApiFootball`. O intervalo padrão é 900 segundos para caber em até
+96 consultas por 24 horas, adequado ao limite gratuito de 100 consultas/dia.
+Em plano pago, informe um intervalo menor, por exemplo:
+
+```powershell
+.\setup-api-football.ps1 -PollingIntervalSeconds 30
+```
+
+Depois de iniciar o BFF, confirme o worker em `/api/providers/status` e compare
+uma partida real com 365Scores e SofaScore antes de usar a fonte na operação.
