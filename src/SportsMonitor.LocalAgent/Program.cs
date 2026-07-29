@@ -177,9 +177,10 @@ internal sealed class LocalAgentOptions
     private static LocalAgentOptions LoadFromFile()
     {
         const string fileName = "appsettings.json";
-        var path = File.Exists(fileName)
-            ? fileName
-            : Path.Combine(AppContext.BaseDirectory, fileName);
+        var executableConfig = Path.Combine(AppContext.BaseDirectory, fileName);
+        var path = File.Exists(executableConfig)
+            ? executableConfig
+            : fileName;
 
         if (!File.Exists(path))
             return new LocalAgentOptions();

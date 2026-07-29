@@ -7,7 +7,7 @@ color 0A
 set "REPO_URL=https://github.com/carlosfrj013-debug/sports-monitor.git"
 set "EXE=%~dp0SportsMonitor.LocalAgent.exe"
 set "LOCAL_PROJECT=%~dp0src\SportsMonitor.LocalAgent"
-set "SETTINGS=%~dp0appsettings.json"
+set "LOCAL_SETTINGS=%~dp0local-agent.appsettings.json"
 set "LOG_DIR=%~dp0logs"
 set "PUBLISH_DIR=%~dp0publish-local-agent"
 set "RESTART_DELAY=10"
@@ -103,6 +103,20 @@ set "EXE=C:\SportsMonitor\publish-local-agent\SportsMonitor.LocalAgent.exe"
 :: EXECUCAO EM LOOP (reinicia automaticamente se cair)
 :: ============================================================
 :run
+if not exist "%LOCAL_SETTINGS%" (
+    echo.
+    echo  [ERRO] Chave interna ainda nao configurada.
+    echo         Execute primeiro: powershell -ExecutionPolicy Bypass -File .\setup-agent-key.ps1
+    pause
+    exit /b 1
+)
+call :sync_config "%EXE%"
+if errorlevel 1 (
+    echo.
+    echo  [ERRO] Nao foi possivel preparar a configuracao protegida do LocalAgent.
+    pause
+    exit /b 1
+)
 echo.
 echo  [OK] Tudo pronto! Iniciando monitoramento...
 echo.
@@ -142,6 +156,11 @@ goto loop
     )
     if not exist "%~2\SportsMonitor.LocalAgent.exe" exit /b 1
     echo  [SETUP] Compilado com sucesso!
+exit /b 0
+
+:sync_config
+    for %%F in ("%~1") do copy /y "%LOCAL_SETTINGS%" "%%~dpFappsettings.json" >nul
+    if errorlevel 1 exit /b 1
 exit /b 0
 
 :erro_compilacao
