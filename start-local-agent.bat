@@ -9,6 +9,7 @@ set "EXE=%~dp0SportsMonitor.LocalAgent.exe"
 set "LOCAL_PROJECT=%~dp0src\SportsMonitor.LocalAgent"
 set "SETTINGS=%~dp0appsettings.json"
 set "LOG_DIR=%~dp0logs"
+set "PUBLISH_DIR=%~dp0publish-local-agent"
 set "RESTART_DELAY=10"
 
 if not exist "%LOG_DIR%\" mkdir "%LOG_DIR%"
@@ -44,16 +45,18 @@ echo  [SETUP] Executavel nao encontrado. Iniciando configuracao...
 echo.
 
 if exist "%LOCAL_PROJECT%\" (
-    echo  [SETUP] Projeto local detectado. Compilando...
-    call :compile "%LOCAL_PROJECT%"
+    echo  [SETUP] Projeto local detectado. Publicando na pasta correta...
+    call :compile "%LOCAL_PROJECT%" "%PUBLISH_DIR%"
     if errorlevel 1 goto :erro_compilacao
+    set "EXE=%PUBLISH_DIR%\SportsMonitor.LocalAgent.exe"
     goto :run
 )
 
 if exist "C:\SportsMonitor\src\SportsMonitor.LocalAgent\" (
-    echo  [SETUP] Projeto encontrado em C:\SportsMonitor. Compilando...
-    call :compile "C:\SportsMonitor\src\SportsMonitor.LocalAgent"
+    echo  [SETUP] Projeto encontrado em C:\SportsMonitor. Publicando na pasta correta...
+    call :compile "C:\SportsMonitor\src\SportsMonitor.LocalAgent" "C:\SportsMonitor\publish-local-agent"
     if errorlevel 1 goto :erro_compilacao
+    set "EXE=C:\SportsMonitor\publish-local-agent\SportsMonitor.LocalAgent.exe"
     goto :run
 )
 
@@ -92,8 +95,9 @@ if errorlevel 1 (
 )
 
 echo  [SETUP] Compilando (aguarde ~1-2 minutos)...
-call :compile "C:\SportsMonitor\src\SportsMonitor.LocalAgent"
+call :compile "C:\SportsMonitor\src\SportsMonitor.LocalAgent" "C:\SportsMonitor\publish-local-agent"
 if errorlevel 1 goto :erro_compilacao
+set "EXE=C:\SportsMonitor\publish-local-agent\SportsMonitor.LocalAgent.exe"
 
 :: ============================================================
 :: EXECUCAO EM LOOP (reinicia automaticamente se cair)
@@ -127,15 +131,16 @@ goto loop
 :: Sub-rotinas
 :: ============================================================
 :compile
+    if not exist "%~2\" mkdir "%~2"
     dotnet publish "%~1" ^
         -c Release -r win-x64 --self-contained true ^
-        -p:PublishSingleFile=true ^
-        -o "%~dp0" --nologo -v q
+        -o "%~2" --nologo -v q
     if errorlevel 1 exit /b 1
-    if not exist "%SETTINGS%" (
-        copy /y "%~1\appsettings.json" "%SETTINGS%" >nul 2>&1
+    if not exist "%~2\appsettings.json" (
+        copy /y "%~1\appsettings.json" "%~2\appsettings.json" >nul 2>&1
         echo  [SETUP] appsettings.json criado.
     )
+    if not exist "%~2\SportsMonitor.LocalAgent.exe" exit /b 1
     echo  [SETUP] Compilado com sucesso!
 exit /b 0
 

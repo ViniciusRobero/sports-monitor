@@ -48,6 +48,18 @@ Endpoints: `/api/v1/sport/football/events/live` e `/api/v1/event/{id}/incidents`
 ### Iteração no SofaScore
 O provider roda **inteiramente dentro do LocalAgent** (máquina do operador). Para testar mudanças no scraping, **recompile local** (`publish-local-agent.ps1` ou `dotnet publish` em `publish-local-agent\`) e rode `start-local-agent.bat`. **Não** faça deploy GCP a cada iteração — o BFF na nuvem só recebe o relay. Deploy GCP do ZIP só quando o fix estiver confirmado.
 
+O `start-local-agent.bat` da raiz publica em `publish-local-agent\` sem
+`PublishSingleFile` antes de iniciar. Não publique o executável diretamente na
+raiz: além de misturar artefatos com o código-fonte, o modo single-file impede o
+Playwright de localizar o driver.
+
+## Perfil local de baixo tráfego
+
+Durante a validação no computador do operador, 365Scores e API-Football usam
+intervalo de 60 segundos, enquanto o LocalAgent/SofaScore mantém o mínimo seguro
+de 90 segundos. Esse perfil reduz o tráfego e protege a reputação do IP sem
+desativar as fontes de confirmação.
+
 Mapeamento JSON isolado em `SofaScoreMapper` (testável sem Playwright; `InternalsVisibleTo("SportsMonitor.Tests")`).
 
 ## Google Custom Search
