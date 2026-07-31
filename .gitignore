@@ -19,6 +19,7 @@ Thumbs.db
 appsettings.Development.json
 appsettings.Local.json
 appsettings.Production.json
+local-agent.appsettings.json
 publish/
 publish-linux/
 publish-local-agent/

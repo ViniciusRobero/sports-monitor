@@ -32,10 +32,10 @@ Quando algo parece estranho, o painel toca um aviso sonoro e cria um card de ale
 **Por que LocalAgent?**
 O SofaScore usa Cloudflare Bot Management e bloqueia requisições de IPs de datacenter com erro 403. O LocalAgent roda na máquina residencial do operador, burla a detecção com navegação real via Playwright e envia os dados ao BFF em nuvem.
 
-**Estratégia de fetch (LocalAgent):**
-1. Tenta `fetch()` direto ao `api.sofascore.com` (rápido, funciona sem challenge em IP residencial)
-2. Se receber resposta 403/challenge: navega ao `sofascore.com/football`, captura o XHR natural que a página dispara (bypass transparente do Cloudflare)
-3. Tenta URLs alternativas (`/sport/football`, `/`) se a primeira não acionar o endpoint
+**Estratégia de coleta (LocalAgent):**
+1. Tenta HTTP direto para a API pública.
+2. Se houver bloqueio, usa navegação normal no Chrome real.
+3. Aplica backoff progressivo para preservar a reputação do IP.
 
 ---
 
@@ -55,7 +55,7 @@ O SofaScore usa Cloudflare Bot Management e bloqueia requisições de IPs de dat
 
 | Fonte | Intervalo |
 |---|---:|
-| SofaScore (LocalAgent → BFF) | 30 segundos |
+| SofaScore (LocalAgent → BFF) | 90 segundos |
 | 365Scores | 20 segundos |
 | Google Search | 300 segundos |
 
@@ -63,7 +63,9 @@ O SofaScore usa Cloudflare Bot Management e bloqueia requisições de IPs de dat
 
 ## Deployment (produção)
 
-Servidor: GCP VM `34.151.245.70` (zona `southamerica-east1-b`)
+O servidor GCP antigo está desativado. Os comandos abaixo são preservados
+apenas como referência para uma eventual nova implantação no Google Cloud;
+não execute deploy até o novo servidor ser definido.
 
 ### Deploy completo
 
@@ -83,6 +85,10 @@ Esse script:
 ```powershell
 .\publish-local-agent.ps1
 ```
+
+O relay exige uma chave privada. Configure o mesmo valor em
+`RelayOptions__AgentKey` no servidor e em `AgentKey` no
+`appsettings.json` do LocalAgent. Nunca salve a chave no Git.
 
 Cria `local-agent.zip` com o binário Windows x64 + Playwright + `start-local-agent.bat`.  
 O ZIP é copiado para `src/SportsMonitor.Bff/wwwroot/downloads/` e servido em `/downloads/local-agent.zip` após o deploy.
@@ -114,10 +120,8 @@ Abra `http://localhost:4200`
 
 O LocalAgent precisa rodar na máquina residencial do operador.
 
-**Download:**
-```
-http://34.151.245.70/downloads/local-agent.zip
-```
+**Download:** será disponibilizado quando o novo servidor for escolhido.
+Durante os testes, gere o pacote com `.\publish-local-agent.ps1`.
 
 **Instalação:**
 1. Extraia o ZIP em qualquer pasta (ex: `C:\SportsMonitor\`)

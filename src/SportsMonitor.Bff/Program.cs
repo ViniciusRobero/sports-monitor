@@ -9,6 +9,7 @@ using SportsMonitor.Workers.Base;
 using SportsMonitor.Bff.Alerts;
 using SportsMonitor.Bff.Controllers;
 using SportsMonitor.Bff.Hubs;
+using SportsMonitor.Bff.Services;
 using SportsMonitor.Domain.Configuration;
 using SportsMonitor.Domain.Interfaces;
 using SportsMonitor.Domain.Models;
@@ -21,6 +22,8 @@ using SportsMonitor.Infrastructure.Stores;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.Configure<RelayOptions>(builder.Configuration.GetSection("RelayOptions"));
+builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
+builder.Services.AddSingleton<RelayStatusTracker>();
 
 builder.Services.AddControllers()
     .AddJsonOptions(opts =>

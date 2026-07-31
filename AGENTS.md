@@ -6,7 +6,8 @@ Guia canônico para agentes de IA e devs neste repositório. Siga o `AGENTS.md` 
 
 Monitor de divergência de dados esportivos ao vivo. Compara placar, gols, cartões e status de uma mesma partida entre fontes (365Scores, SofaScore, Google) e dispara um alerta sonoro + card no dashboard quando elas discordam. **Apoia** a verificação manual de um analista — nunca decide nem aposta.
 
-- **Produção:** http://34.151.245.70/ (GCP, projeto `sportsmonitor-prod`)
+- **Produção:** indisponível; o servidor GCP antigo foi desativado. O próximo
+  ambiente será escolhido depois da validação local.
 - Visão de produto e fluxo do analista: [docs/architecture.md](docs/architecture.md)
 
 ## Regras de ouro (inegociáveis)

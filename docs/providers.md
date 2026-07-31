@@ -7,7 +7,7 @@
 | 365Scores | HTTP GET direto | Não | Placar, status | ✅ Ativo |
 | SofaScore | Playwright via **LocalAgent** | Não | Placar, gols, cartões, incidentes | ✅ Ativo (relay) |
 | Google Custom Search | API JSON | API key + Search Engine ID | Snippets/links de verificação | ✅ Ativo |
-| API-Football | HTTP | Paga ($19+/mês) | Eventos estruturados | ❌ Fora de escopo |
+| API-Football | HTTP | API key | Placar, status, eventos estruturados | 🟡 Pronto; requer chave |
 | BetsAPI | HTTP | Paga | Bet365 odds + suspensão | ❌ Fora de escopo |
 
 Limite: apenas dados públicos. Sem login, CAPTCHA, ou bypass de controle de acesso.
@@ -48,6 +48,18 @@ Endpoints: `/api/v1/sport/football/events/live` e `/api/v1/event/{id}/incidents`
 ### Iteração no SofaScore
 O provider roda **inteiramente dentro do LocalAgent** (máquina do operador). Para testar mudanças no scraping, **recompile local** (`publish-local-agent.ps1` ou `dotnet publish` em `publish-local-agent\`) e rode `start-local-agent.bat`. **Não** faça deploy GCP a cada iteração — o BFF na nuvem só recebe o relay. Deploy GCP do ZIP só quando o fix estiver confirmado.
 
+O `start-local-agent.bat` da raiz publica em `publish-local-agent\` sem
+`PublishSingleFile` antes de iniciar. Não publique o executável diretamente na
+raiz: além de misturar artefatos com o código-fonte, o modo single-file impede o
+Playwright de localizar o driver.
+
+## Perfil local de baixo tráfego
+
+Durante a validação no computador do operador, 365Scores e API-Football usam
+intervalo de 60 segundos, enquanto o LocalAgent/SofaScore mantém o mínimo seguro
+de 90 segundos. Esse perfil reduz o tráfego e protege a reputação do IP sem
+desativar as fontes de confirmação.
+
 Mapeamento JSON isolado em `SofaScoreMapper` (testável sem Playwright; `InternalsVisibleTo("SportsMonitor.Tests")`).
 
 ## Google Custom Search
@@ -58,3 +70,32 @@ Mapeamento JSON isolado em `SofaScoreMapper` (testável sem Playwright; `Interna
 - Links do Google levam `?authuser=1` (a conta `viniciusroberto17@gmail.com` é o índice 1).
 
 > Endpoints internos detalhados e schema JSONL histórico: [history/PHASE_01_COMPARISON_SOURCES_RESEARCH.md](history/PHASE_01_COMPARISON_SOURCES_RESEARCH.md).
+
+## API-Football (API-Sports)
+
+- Base: `https://v3.football.api-sports.io`
+- Ao vivo: `/fixtures?live=all`
+- Auth: header `x-apisports-key`.
+- A chave deve ficar apenas em `appsettings.Production.json` (gitignored) ou
+  em variável de ambiente; nunca em `appsettings.json` ou no Git.
+- Para configurar no Windows sem exibir a chave no terminal:
+
+```powershell
+.\setup-api-football.ps1
+```
+
+O script preserva as demais configurações existentes e ativa somente
+`Providers:ApiFootball`. Para testes ao vivo, o intervalo padrão é 60 segundos:
+uma chamada a `/fixtures?live=all` traz todos os jogos ao vivo, portanto 4 ou 5
+partidas não multiplicam o consumo. No plano gratuito, limite a sessão a 90
+minutos (90 consultas) e preserve 10 consultas de reserva. Pare o monitor ao
+fim da sessão para não consumir a cota restante.
+
+Para uma verificação fora da janela operacional, informe um intervalo maior:
+
+```powershell
+.\setup-api-football.ps1 -PollingIntervalSeconds 900
+```
+
+Depois de iniciar o BFF, confirme o worker em `/api/providers/status` e compare
+uma partida real com 365Scores e SofaScore antes de usar a fonte na operação.

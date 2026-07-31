@@ -77,8 +77,8 @@ try {
         $config = [ordered]@{
             Demo = [ordered]@{ Enabled = $false }
             Providers = [ordered]@{
-                SofaScore = [ordered]@{ Enabled = $false; PollingIntervalSeconds = 30 }
-                Scores365 = [ordered]@{ Enabled = $true; PollingIntervalSeconds = 20 }
+                SofaScore = [ordered]@{ Enabled = $false; PollingIntervalSeconds = 90 }
+                Scores365 = [ordered]@{ Enabled = $true; PollingIntervalSeconds = 60 }
                 Google = [ordered]@{
                     Enabled = $true
                     PollingIntervalSeconds = 300

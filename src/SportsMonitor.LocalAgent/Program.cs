@@ -16,17 +16,26 @@ if (args.Contains("--help") || args.Contains("-h"))
 
         Options:
           --bff-url <url>      BFF server URL  (default: value in appsettings.json)
-          --interval <seconds> Polling interval (default: 30)
+          --interval <seconds> Polling interval (minimum/default: 90)
           --help, -h           Show this help
 
         Config file (edit to change defaults):
           appsettings.json  — must be in the same folder as the .exe
-          Key: "BffUrl"     — URL of the remote BFF (e.g. "http://34.151.245.70")
+          Key: "BffUrl"     — URL of the BFF (local default: "http://localhost:5000")
         """);
     return;
 }
 
 var options = LocalAgentOptions.Load(args);
+
+if (string.IsNullOrWhiteSpace(options.AgentKey))
+{
+    Console.Error.WriteLine(
+        "[ERRO] Configure AgentKey no appsettings.json. " +
+        "A mesma chave deve estar em RelayOptions:AgentKey no servidor.");
+    Environment.ExitCode = 2;
+    return;
+}
 
 Console.Title = "SportsMonitor LocalAgent";
 Console.WriteLine("============================================");
@@ -98,8 +107,7 @@ static async Task RunAsync(LocalAgentOptions options, CancellationToken ct)
         Timeout = TimeSpan.FromSeconds(30)
     };
 
-    if (!string.IsNullOrWhiteSpace(options.AgentKey))
-        bffHttp.DefaultRequestHeaders.Add("X-Agent-Key", options.AgentKey);
+    bffHttp.DefaultRequestHeaders.Add("X-Agent-Key", options.AgentKey);
 
     using var loggerFactory = LoggerFactory.Create(b =>
         b.AddSimpleConsole(o => { o.SingleLine = true; o.TimestampFormat = "HH:mm:ss "; })
@@ -138,7 +146,7 @@ static async Task RunAsync(LocalAgentOptions options, CancellationToken ct)
 
 internal sealed class LocalAgentOptions
 {
-    public string BffUrl { get; set; } = "http://34.151.245.70";
+    public string BffUrl { get; set; } = "http://localhost:5000";
     public int IntervalSeconds { get; set; } = 90;
     public string AgentKey { get; set; } = "";
     public SofaScoreOptions SofaScore { get; set; } = new();
@@ -162,16 +170,17 @@ internal sealed class LocalAgentOptions
         }
 
         options.BffUrl = options.BffUrl.TrimEnd('/');
-        options.IntervalSeconds = Math.Max(1, options.IntervalSeconds);
+        options.IntervalSeconds = Math.Max(90, options.IntervalSeconds);
         return options;
     }
 
     private static LocalAgentOptions LoadFromFile()
     {
         const string fileName = "appsettings.json";
-        var path = File.Exists(fileName)
-            ? fileName
-            : Path.Combine(AppContext.BaseDirectory, fileName);
+        var executableConfig = Path.Combine(AppContext.BaseDirectory, fileName);
+        var path = File.Exists(executableConfig)
+            ? executableConfig
+            : fileName;
 
         if (!File.Exists(path))
             return new LocalAgentOptions();

@@ -27,6 +27,7 @@ public class MatchBuilder
     public MatchBuilder WithScore(int home, int away) { _homeScore = home; _awayScore = away; return this; }
     public MatchBuilder WithStatus(MatchStatus s) { _status = s; return this; }
     public MatchBuilder WithSource(string s) { _source = s; return this; }
+    public MatchBuilder WithKickOff(DateTime dt) { _kickOff = dt; return this; }
     public MatchBuilder WithCollectedAt(DateTime dt) { _collectedAt = dt; return this; }
     public MatchBuilder WithProvidesEvents(bool v) { _providesEvents = v; return this; }
     public MatchBuilder WithGoal(int minute, string player, string team = "home")

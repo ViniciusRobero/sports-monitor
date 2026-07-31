@@ -1,17 +1,21 @@
 # Deploy & Operação
 
-## Produção (GCP)
+## Produção
+
+Não há servidor de produção ativo. A VM GCP abaixo é histórica e está
+indisponível; não execute os scripts de deploy até o novo destino ser definido.
 
 | Campo | Valor |
 |---|---|
-| URL | http://34.151.245.70/ |
+| URL | indisponível |
 | Project ID | `sportsmonitor-prod` |
 | VM | `sportsmonitor-vm` (e2-small, Ubuntu 22.04) |
 | Zone | `southamerica-east1-b` |
 | Billing | `01FE90-8618C8-3CEE8F` |
 | App | systemd `sportsmonitor` em `localhost:5000`, nginx proxy na porta 80 |
 
-GCP é **CLI-first** (gcloud/ssh/scp + scripts do repo), não Console web. Links Google/GCP levam `?authuser=1`.
+Se GCP voltar a ser escolhido, a operação é **CLI-first**
+(gcloud/ssh/scp + scripts do repo), não Console web.
 
 ## Deploy
 
@@ -30,7 +34,10 @@ gcloud compute ssh sportsmonitor-vm --zone southamerica-east1-b --project sports
 gcloud compute ssh sportsmonitor-vm --zone southamerica-east1-b --project sportsmonitor-prod --command "sudo journalctl -u sportsmonitor -f"
 ```
 
-Checar: `http://34.151.245.70/` carrega, SignalR conecta, 365Scores recebe dados em jogos ao vivo, ações de alerta funcionam (Confirmar/Falso positivo/Ignorar/Ignorar todos), layout mobile usável, SofaScore reportado como ativo ou bloqueado.
+No novo servidor, checar: URL pública carrega, SignalR conecta, 365Scores
+recebe dados em jogos ao vivo, ações de alerta funcionam
+(Confirmar/Falso positivo/Ignorar/Ignorar todos), layout mobile usável e
+SofaScore reportado como ativo, atrasado ou desconectado.
 
 ## Fluxo de release
 
@@ -49,9 +56,17 @@ Revisão: nenhum segredo commitado, `appsettings.Production.json` continua untra
 ## Segredos & credenciais
 
 - `appsettings.Production.json` (raiz, gitignored) guarda credenciais de produção. **Nunca** commitar.
+- **Relay SofaScore:** gere uma chave aleatória forte e configure o mesmo valor em
+  `RelayOptions__AgentKey` no servidor e em `AgentKey` no `appsettings.json`
+  distribuído ao LocalAgent. Sem essa chave, o endpoint recusa todos os envios.
 - **Google:** `setup-google-search-key.ps1 -ProjectId sportsmonitor-prod` cria a key e escreve o appsettings. Search Engine ID: `25c69f98aa10d4ba0`. Não reusar a key antiga (deu 403).
+- **API-Football:** `setup-api-football.ps1` solicita a chave sem exibi-la,
+  preserva as outras configurações e ativa o provider. Para o teste ao vivo, o
+  intervalo padrão de 60s permite uma sessão de até 90 minutos com 10 das 100
+  consultas diárias preservadas como reserva. Uma chamada traz todos os jogos
+  ao vivo; pare o monitor ao final da sessão.
 - **365Scores / SofaScore:** sem token.
-- **API-Football / BetsAPI:** pagas, fora do escopo atual.
+- **BetsAPI:** paga, fora do escopo atual.
 
 ## Validação local antes de subir
 
